@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Movidesk</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: sans-serif; }
+        .chart-container { width: 80%; margin: 50px auto; }
+    </style>
+</head>
+<body>
+    <div class="chart-container">
+        <canvas id="statusChart"></canvas>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchDashboardData();
+        });
+
+        async function fetchDashboardData() {
+            try {
+                const response = await fetch('/api/dashboard-data');
+                if (!response.ok) {
+                    throw new Error('Erro ao buscar dados da API');
+                }
+                const data = await response.json();
+                
+                // Processar os dados para o gráfico
+                const statusCounts = {};
+                data.forEach(ticket => {
+                    const status = ticket.status || 'Sem Status';
+                    statusCounts[status] = (statusCounts[status] || 0) + 1;
+                });
+
+                const labels = Object.keys(statusCounts);
+                const values = Object.values(statusCounts);
+
+                // Criar o gráfico
+                createStatusChart(labels, values);
+
+            } catch (error) {
+                console.error('Erro:', error);
+            }
+        }
+
+        function createStatusChart(labels, data) {
+            const ctx = document.getElementById('statusChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Tickets por Status',
+                        data: data,
+                        backgroundColor: [
+                            'rgba(255, 99, 132, 0.5)',
+                            'rgba(54, 162, 235, 0.5)',
+                            'rgba(255, 206, 86, 0.5)',
+                            'rgba(75, 192, 192, 0.5)'
+                        ],
+                        borderColor: [
+                            'rgba(255, 99, 132, 1)',
+                            'rgba(54, 162, 235, 1)',
+                            'rgba(255, 206, 86, 1)',
+                            'rgba(75, 192, 192, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
