@@ -1,3 +1,4 @@
+
 import express from "express";
 import axios from "axios";
 import dotenv from "dotenv";
@@ -107,6 +108,7 @@ app.get("/admin/users", requireAdmin, async (req, res) => {
     res.json(rows);
 });
 
+
 app.post("/admin/users/update", requireAdmin, async (req, res) => {
     const { userId, team, role } = req.body;
     try {
@@ -115,6 +117,43 @@ app.post("/admin/users/update", requireAdmin, async (req, res) => {
     } catch (err) {
         console.error("❌ Erro ao atualizar usuário:", err);
         res.status(500).json({ error: "Erro ao atualizar usuário" });
+    }
+});
+
+// Rota para excluir usuário
+app.post("/admin/users/delete", requireAdmin, async (req, res) => {
+    const { userId } = req.body;
+    if (!userId) return res.status(400).json({ error: "ID do usuário obrigatório" });
+    try {
+        await db.query("DELETE FROM users WHERE id = ?", [userId]);
+        res.json({ success: true });
+    } catch (err) {
+        console.error("❌ Erro ao excluir usuário:", err);
+        res.status(500).json({ error: "Erro ao excluir usuário" });
+    }
+});
+// Rota para criar usuário
+app.post("/admin/users/create", requireAdmin, async (req, res) => {
+    const { username, password, team, role } = req.body;
+    if (!username || !password || !team || !role) {
+        return res.status(400).json({ error: "Dados obrigatórios ausentes" });
+    }
+    try {
+        // Verifica se já existe usuário com o mesmo nome
+        const [rows] = await db.query("SELECT id FROM users WHERE username = ?", [username]);
+        if (rows.length > 0) {
+            return res.status(409).json({ error: "Usuário já existe" });
+        }
+        // Hash da senha
+        const password_hash = await bcrypt.hash(password, 10);
+        await db.query(
+            "INSERT INTO users (username, password_hash, team, role) VALUES (?, ?, ?, ?)",
+            [username, password_hash, team, role]
+        );
+        res.json({ success: true });
+    } catch (err) {
+        console.error("❌ Erro ao criar usuário:", err);
+        res.status(500).json({ error: "Erro ao criar usuário" });
     }
 });
 
