@@ -150,9 +150,8 @@
                     // Card de melhorias rejeitadas
                     if (melhoriasRejeitadas.length) {
                         const cardRej = document.createElement("div");
-                        cardRej.className = "ticket";
-                        cardRej.style.border = "2px solid #dc2626";
-                        cardRej.style.background = "#fff0f0";
+                        cardRej.className = "ticket ticketRejeitadas";
+                        // estilos via CSS em .ticketRejeitadas
                         cardRej.innerHTML = `<h4 style=\"color:#dc2626\">🚫 Melhorias Rejeitadas</h4>`;
                         melhoriasRejeitadas.slice().reverse().forEach(m => {
                             const item = document.createElement("div");

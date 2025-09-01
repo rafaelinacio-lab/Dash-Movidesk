@@ -20,6 +20,46 @@ header h1 span { color: #2563eb; }
 
 /* ===== Botões header ===== */
 .acoes { display: flex; gap: 10px; align-items: center; }
+.acoes a.btnGhost, .acoes button.btnGhost {
+    border: 1px solid #d1d5db; /* melhora contraste no claro */
+    background: #e5e7eb;       /* antes era #f3f4f6 (igual ao body) */
+    color: #111827;
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: none;
+    transition: background .2s, border-color .2s, color .2s;
+}
+/* Remove sublinhado de links do header em todos os estados */
+.acoes a.btnGhost,
+.acoes a.btnGhost:link,
+.acoes a.btnGhost:visited,
+.acoes a.btnGhost:hover,
+.acoes a.btnGhost:active,
+.acoes a.btnGhost:focus { text-decoration: none !important; }
+
+.acoes a.btnGhost:hover, .acoes button.btnGhost:hover {
+    background: #d1d5db;
+    border-color: #cbd5e1;
+    color: #111827;
+}
+body.dark .acoes a.btnGhost, body.dark .acoes button.btnGhost {
+    background: #374151;
+    color: #f9fafb;
+    border-color: #4b5563; /* contorno sutil no escuro */
+}
+body.dark .acoes a.btnGhost:hover, body.dark .acoes button.btnGhost:hover {
+    background: #4b5563;
+    color: #f9fafb;
+}
+/* Variação de perigo (Sair) */
+.btnGhost.danger { color: #b45309; }
+body.dark .btnGhost.danger { color: #f59e0b; }
 /* Tickets (melhorias) */
 .ticket {
     background: #fff;
@@ -58,8 +98,40 @@ header h1 span { color: #2563eb; }
 .btnSalvar { background: #2563eb; color: #fff; }
 .btnSuccess { background: #16a34a; color: #fff; }
 .btnDanger { background: #dc2626; color: #fff; }
-.btnGhost { background: #f3f4f6; color: #222; }
-.btnGhost:hover { background: #e5e7eb; }
+.btnGhost {
+    background: #f3f4f6;
+    color: #222;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none !important;
+    box-shadow: none;
+}
+.btnGhost:hover {
+    background: #e5e7eb;
+    text-decoration: none !important;
+    color: #222;
+    box-shadow: none;
+}
+body.dark .btnGhost {
+    background: #374151;
+    color: #f9fafb;
+    text-decoration: none !important;
+    box-shadow: none;
+}
+body.dark .btnGhost:hover {
+    background: #4b5563;
+    color: #f9fafb;
+    text-decoration: none !important;
+    box-shadow: none;
+}
 .descricaoCompleta {
     background: #f9fafb;
     border-radius: 6px;
@@ -68,6 +140,11 @@ header h1 span { color: #2563eb; }
     color: #222;
     margin-top: 6px;
     box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+body.dark .descricaoCompleta {
+    background: #111827; /* ajusta leitura no tema escuro */
+    color: #f3f4f6;
+    box-shadow: none;
 }
 
 /* Botão Tema */
@@ -320,6 +397,16 @@ body.dark .ticket {
 .ticket h4 { font-size: 15px; font-weight: bold; margin: 0 0 8px; color: inherit; }
 .ticket p  { margin: 4px 0; font-size: 13px; }
 .ticket small { display: block; margin-top: 8px; font-size: 12px; opacity: .8; }
+
+/* Ticket especial: lista de Melhorias Rejeitadas */
+.ticketRejeitadas { background: #fff0f0; border: 2px solid #dc2626; }
+.ticketRejeitadas h4 { color: #dc2626; }
+body.dark .ticketRejeitadas {
+    background: #3b0f0f; /* fundo escuro avermelhado para contraste */
+    border-color: #ef4444;
+    color: #fee2e2;
+}
+body.dark .ticketRejeitadas h4 { color: #f87171; }
 
 /* ===== Card do gráfico ===== */
 .graficoCard {
