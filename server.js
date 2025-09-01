@@ -234,12 +234,11 @@ app.get("/api/tickets", async (req, res) => {
             return res.json({ counts:{}, countsPerUrgency:{}, countsPerOwner:{}, tickets:[] });
         }
 
-        const hoje = new Date();
-        const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-        const inicioMesISO = ymd(inicioMes);
-        const todayLocalISO = ymd(hoje);
 
-        let filter = `createdDate ge ${inicioMesISO} and ownerTeam eq '${userTeam}'`;
+        const todayLocalISO = ymd(new Date());
+
+    // Busca apenas tickets ativos: New, InAttendance, Stopped
+    let filter = `ownerTeam eq '${userTeam}' and (baseStatus eq 'New' or baseStatus eq 'InAttendance' or baseStatus eq 'Stopped')`;
 
         const url =
             `${MOVI_URL}?token=${MOVI_TOKEN}&$top=500` +
@@ -248,6 +247,7 @@ app.get("/api/tickets", async (req, res) => {
             `&$filter=${encodeURIComponent(filter)}`;
 
         const { data } = await axios.get(url, { timeout: 15000 });
+
 
         const tickets = data.map((t) => {
             let prevISO = null;
@@ -279,6 +279,22 @@ app.get("/api/tickets", async (req, res) => {
             };
         });
 
+        // Log para debug: mostra os status dos tickets retornados
+        console.log("Tickets retornados:");
+        tickets.forEach(t => {
+            console.log(`#${t.id} | baseStatus: ${t.baseStatus} | status: ${t.status} | canceled: ${t.canceled}`);
+        });
+
+        // Calcula tickets criados no mês vigente
+        const hoje = new Date();
+        const mesAtual = hoje.getMonth();
+        const anoAtual = hoje.getFullYear();
+        const ticketsMes = tickets.filter(t => {
+            if (!t.createdDate) return false;
+            const d = new Date(t.createdDate);
+            return d.getMonth() === mesAtual && d.getFullYear() === anoAtual;
+        });
+
         const counts = {
             Total: tickets.filter((t) => !t.canceled).length,
             New: tickets.filter((t) => t.baseStatus === "New" && !t.canceled).length,
@@ -286,7 +302,7 @@ app.get("/api/tickets", async (req, res) => {
             Stopped: tickets.filter((t) => t.baseStatus === "Stopped" && !t.canceled).length,
             Closed: tickets.filter((t) => isClosedOrResolved(t) && !t.canceled).length,
             Overdue: tickets.filter((t) => t.overdue && !t.canceled).length,
-            MonthOpenedAll: data.length,
+            MonthOpenedAll: ticketsMes.length,
         };
         counts.OpenTickets = counts.New + counts.InAttendance + counts.Stopped;
 

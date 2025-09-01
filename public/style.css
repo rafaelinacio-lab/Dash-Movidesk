@@ -315,9 +315,11 @@ body.dark .legendTicketBadge{ background:#374151; color:#e5e7eb; border-color:#4
 /* ===== Badge Status Detalhado ===== */
 .statusDetalhado{
     display:inline-block; padding:4px 10px; border-radius:12px; font-size:12px; font-weight:700; margin-left:5px; color:#fff !important;
+    background: #6b7280; /* cor padrão cinza */
 }
 .status-novo          { background: #2563eb; }
-.status-ematendimento { background: #f59e0b; }
+.status-ematendimento { background: #f59e0b; color: #111827 !important; }
+body.dark .status-ematendimento { background: #f59e0b; color: #fff !important; }
 .status-aguardando    { background: #9333ea; }
 .status-fechado       { background: #6b7280; }
 .status-resolvido     { background: #16a34a; }
