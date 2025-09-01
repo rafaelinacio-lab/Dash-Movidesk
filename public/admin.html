@@ -201,7 +201,7 @@
                 "VIASOFT - Melhorias Personalizadas", "VIASOFT - Migrações", "VIASOFT - Sistemas Internos", "VIASOFT - Suporte a Personalizações",
                 "VIASOFT - Suporte Oracle Cloud", "VIASOFT - Support Leaders", "VIASOFT - Tecnologia", "Viasuper - Equipe Técnica", "Viasuper - Líderes",
                 "Viasuper - Suporte", "VOORS  - Suporte", "VOORS - Equipe Técnica", "VOORS - VX", "VX - AGROTITAN", "VX - AGROTITAN FAZENDAS",
-                "VX - CONSTRUSHOW", "VX - PETROSHOW"
+                "VX - CONSTRUSHOW", "VX - PETROSHOW","VIABOT","VIABOT - ADM"
             ];
 
             // Popular select de cadastro
@@ -332,6 +332,21 @@
 
             carregarUsuarios();
         })();
+    </script>
+    <script>
+    (function(){
+        const normalize = (s) => (s||"")
+            .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase();
+        document.querySelectorAll('.adminSection > h2').forEach(h2 => {
+            const t = normalize(h2.textContent);
+            if (t.includes('cadastrar usuario') || t.includes('usuarios do sistema')) {
+                const sec = h2.parentElement;
+                sec.classList.add('collapsible','collapsed');
+                h2.addEventListener('click', () => sec.classList.toggle('collapsed'));
+            }
+        });
+    })();
     </script>
 </body>
 </html>

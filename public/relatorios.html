@@ -4,7 +4,14 @@
     <meta charset="UTF-8" />
     <title>Relatórios - Dash Movidesk</title>
     <link href="style.css" rel="stylesheet" />
-</head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      #teamSelect { max-width: 520px; }
+    </style>
+    <script>
+      function toggleTheme(){ document.body.classList.toggle('dark'); }
+    </script>
+  </head>
 <body>
     <div class="container">
         <header>
@@ -13,15 +20,262 @@
                 Relatórios <span>Movidesk</span>
             </h1>
             <div class="acoes">
-                <a href="/dashboard" class="btnGhost sm">⬅️ Voltar</a>
-                <a href="/logout" id="logoutBtn" class="btnGhost sm danger">🚪 Sair</a>
+                <button onclick="toggleTheme()" class="btnGhost sm">Tema</button>
+                <a href="/dashboard" class="btnGhost sm">Voltar</a>
+                <a href="/logout" id="logoutBtn" class="btnGhost sm danger">Sair</a>
             </div>
         </header>
         <section class="adminSection">
             <h2>📊 Relatórios</h2>
-            <p>Em breve: gráficos, exportação e filtros avançados.</p>
+            <div class="adminForm" style="margin:8px 0 16px; align-items: flex-start; gap:12px;">
+                <div id="teamPickerAdmin" style="display:none;">
+                    <label style="display:block; font-weight:600; margin-bottom:6px;">Equipes</label>
+                    <select id="teamSelect" multiple size="6" style="min-width:360px"></select>
+                </div>
+                <div id="teamReadOnlyBox" style="display:none;">
+                    <label style="display:block; font-weight:600; margin-bottom:6px;">Equipe</label>
+                    <div id="teamReadOnly" class="badge" style="background:#2563eb">-</div>
+                </div>
+                <div style="min-width:260px;">
+                    <label style="display:block; font-weight:600; margin-bottom:6px;">Opções</label>
+                    <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                      <div>
+                        <div style="font-weight:600; font-size:12px; opacity:.8; margin-bottom:4px;">Incluir status</div>
+                        <label><input type="checkbox" id="optOpen" checked> Abertos</label><br>
+                        <label><input type="checkbox" id="optClosed" checked> Fechados</label><br>
+                        <label><input type="checkbox" id="optResolved" checked> Resolvidos</label><br>
+                        <label><input type="checkbox" id="optCanceled" checked> Cancelados</label>
+                      </div>
+                      <div>
+                        <div style="font-weight:600; font-size:12px; opacity:.8; margin-bottom:4px;">Exibir</div>
+                        <label><input type="checkbox" id="optTotais" checked> Totais por equipe</label><br>
+                        <label><input type="checkbox" id="optAgentes" checked> Por agente</label>
+                      </div>
+                      <div>
+                        <div style="font-weight:600; font-size:12px; opacity:.8; margin-bottom:4px;">Período</div>
+                        <label style="display:block; margin-bottom:4px;">De: <input type="date" id="dateStart"></label>
+                        <label style="display:block;">Até: <input type="date" id="dateEnd"></label>
+                      </div>
+                    </div>
+                </div>
+                <div style="align-self:flex-end;">
+                    <button id="btnGerar" class="btnSalvar">Gerar Relatório</button>
+                </div>
+            </div>
+            <div id="relatorioConteudo"></div>
         </section>
     </div>
     <div class="appFooter">Desenvolvido para Viasoft © 2025</div>
+
+    <script>
+    (function(){
+        const elTeams = document.getElementById('teamSelect');
+        const elBtn = document.getElementById('btnGerar');
+        const elOut = document.getElementById('relatorioConteudo');
+        const boxAdmin = document.getElementById('teamPickerAdmin');
+        const boxReadOnly = document.getElementById('teamReadOnlyBox');
+        const elTeamRO = document.getElementById('teamReadOnly');
+        const elOpt = {
+          open: document.getElementById('optOpen'),
+          closed: document.getElementById('optClosed'),
+          resolved: document.getElementById('optResolved'),
+          canceled: document.getElementById('optCanceled'),
+          totais: document.getElementById('optTotais'),
+          agentes: document.getElementById('optAgentes'),
+        };
+        const elDate = { start: document.getElementById('dateStart'), end: document.getElementById('dateEnd') };
+
+        const fmt = (n)=> new Intl.NumberFormat('pt-BR').format(n||0);
+
+        async function initTeams(){
+            // Sempre usa a equipe do usuário (inclusive admin)
+            try{
+                const meResp = await fetch('/api/me');
+                if (!meResp.ok) { window.location.href = '/'; return; }
+                const me = await meResp.json();
+                if (!me || !me.team) { window.location.href = '/'; return; }
+                // Mostra badge somente leitura e fixa a opção selecionada
+                boxAdmin.style.display = 'none';
+                boxReadOnly.style.display = '';
+                elTeamRO.textContent = me.team;
+                elTeams.innerHTML = '';
+                const opt = document.createElement('option');
+                opt.value = opt.textContent = me.team;
+                opt.selected = true;
+                elTeams.appendChild(opt);
+            }catch(e){
+                console.error('Erro ao obter usuário', e);
+                window.location.href = '/';
+            }
+        }
+
+        async function carregarEquipesComoAdmin(){
+            try{
+                elTeams.innerHTML = '<option>Carregando...</option>';
+                const r = await fetch('/api/report-teams');
+                if (!r.ok) throw new Error('HTTP '+r.status);
+                const teams = await r.json();
+                elTeams.innerHTML = '';
+                (teams||[]).forEach(t=>{
+                    const opt = document.createElement('option');
+                    opt.value = opt.textContent = t;
+                    elTeams.appendChild(opt);
+                });
+            }catch(e){
+                console.error('Erro ao carregar equipes', e);
+                elTeams.innerHTML = '<option>Erro ao carregar equipes</option>';
+            }
+        }
+
+        function getSelecionadas(){
+            return Array.from(elTeams.selectedOptions).map(o=>o.value);
+        }
+
+        function getFlags(){
+            const flags = {
+              open: !!elOpt.open.checked,
+              closed: !!elOpt.closed.checked,
+              resolved: !!elOpt.resolved.checked,
+              canceled: !!elOpt.canceled.checked,
+              totais: !!elOpt.totais.checked,
+              agentes: !!elOpt.agentes.checked,
+            };
+            if(!flags.open && !flags.closed && !flags.resolved && !flags.canceled){
+              // garante pelo menos um status
+              flags.open = true;
+            }
+            if(!flags.totais && !flags.agentes){
+              flags.totais = true;
+            }
+            return flags;
+        }
+
+        function render(res){
+            if(!res || !res.teams || !res.teams.length){ elOut.innerHTML = '<p>Nenhum dado.</p>'; return; }
+            const flags = getFlags();
+            const parts = [];
+            // Tabela de totais por equipe
+            if (flags.totais){
+              parts.push('<div class="cardWidget azul" style="margin-bottom:14px;"><div class="cardInfo"><h3>Totais por equipe</h3></div></div>');
+              const headerCols = ['Equipe'];
+              if(flags.open) headerCols.push('Abertos');
+              if(flags.closed) headerCols.push('Fechados');
+              if(flags.resolved) headerCols.push('Resolvidos');
+              if(flags.canceled) headerCols.push('Cancelados');
+              headerCols.push('Total');
+              parts.push('<table class="adminTable"><thead><tr>'+headerCols.map(h=>`<th>${h}</th>`).join('')+'</tr></thead><tbody>');
+              res.teams.forEach(t=>{
+                  const a=t.totals; const row = [`<td>${t.team}</td>`];
+                  if(flags.open) row.push(`<td>${fmt(a.open)}</td>`);
+                  if(flags.closed) row.push(`<td>${fmt(a.closed)}</td>`);
+                  if(flags.resolved) row.push(`<td>${fmt(a.resolved)}</td>`);
+                  if(flags.canceled) row.push(`<td>${fmt(a.canceled)}</td>`);
+                  row.push(`<td>${fmt(a.total)}</td>`);
+                  parts.push('<tr>'+row.join('')+'</tr>');
+              });
+              parts.push('</tbody></table>');
+            }
+
+            // Por agente, agrupado por equipe
+            if (flags.agentes){
+              res.teams.forEach(t=>{
+                  parts.push(`<div class="cardWidget roxo" style="margin-top:18px;"><div class="cardInfo"><h3>Por agente — ${t.team}</h3></div></div>`);
+                  const headerA = ['Agente'];
+                  if(flags.open) headerA.push('Abertos');
+                  if(flags.closed) headerA.push('Fechados');
+                  if(flags.resolved) headerA.push('Resolvidos');
+                  if(flags.canceled) headerA.push('Cancelados');
+                  headerA.push('Total');
+                  parts.push('<table class="adminTable" style="margin-bottom:10px"><thead><tr>'+headerA.map(h=>`<th>${h}</th>`).join('')+'</tr></thead><tbody>');
+                  const agents = Object.keys(t.perAgent).sort((a,b)=>a.localeCompare(b,'pt-BR'));
+                  agents.forEach(name=>{
+                      const a=t.perAgent[name]; const row=[`<td>${name}</td>`];
+                      if(flags.open) row.push(`<td>${fmt(a.open)}</td>`);
+                      if(flags.closed) row.push(`<td>${fmt(a.closed)}</td>`);
+                      if(flags.resolved) row.push(`<td>${fmt(a.resolved)}</td>`);
+                      if(flags.canceled) row.push(`<td>${fmt(a.canceled)}</td>`);
+                      row.push(`<td>${fmt(a.total)}</td>`);
+                      parts.push('<tr>'+row.join('')+'</tr>');
+                  });
+                  parts.push('</tbody></table>');
+              });
+            }
+
+            elOut.innerHTML = parts.join('');
+        }
+
+        async function gerar(){
+            const teams = getSelecionadas();
+            if(!teams.length){ alert('Selecione ao menos uma equipe'); return; }
+            elOut.innerHTML = '<p>Gerando...</p>';
+            // O backend usa a equipe da sessão; não precisa enviar query
+            const controller = new AbortController();
+            const id = setTimeout(()=>controller.abort(), 12000);
+            try {
+                let url = '/api/reports';
+                const qs = new URLSearchParams();
+                if (elDate.start.value) qs.set('start', elDate.start.value);
+                if (elDate.end.value) qs.set('end', elDate.end.value);
+                const qstr = qs.toString();
+                if (qstr) url += '?' + qstr;
+                const r = await fetch(url, { signal: controller.signal });
+                clearTimeout(id);
+                if (!r.ok) {
+                    if (r.status === 404) {
+                        // Fallback: gera usando /api/tickets apenas para "Abertos"
+                        await gerarFallbackAbertos();
+                        return;
+                    }
+                    let msg = 'Falha ao gerar relatório ('+r.status+')';
+                    try { const err = await r.json(); if (err && err.error) msg += ': '+err.error; } catch {}
+                    elOut.innerHTML = '<p>'+msg+'</p>';
+                    return;
+                }
+                const data = await r.json();
+                render(data);
+            } catch (e) {
+                const aborted = e && (e.name === 'AbortError');
+                elOut.innerHTML = '<p>'+(aborted ? 'Tempo esgotado ao gerar relatório.' : 'Erro ao gerar relatório.')+'</p>';
+                console.error('Erro gerar relatório', e);
+            }
+        }
+
+        async function gerarFallbackAbertos(){
+            try{
+                const r = await fetch('/api/tickets');
+                if (!r.ok) { elOut.innerHTML = '<p>Falha ao gerar relatório (fallback).</p>'; return; }
+                const dados = await r.json();
+                const teamName = (document.getElementById('teamReadOnly')?.textContent || 'Equipe').trim();
+                const start = elDate.start.value ? new Date(elDate.start.value) : null;
+                const endInc = elDate.end.value ? new Date(new Date(elDate.end.value).getTime()+86400000) : null;
+                const inRange = (iso)=>{
+                    if(!start && !endInc) return true;
+                    if(!iso) return false;
+                    const d=new Date(iso); if(isNaN(d)) return false;
+                    if(start && d<start) return false;
+                    if(endInc && d>=endInc) return false;
+                    return true;
+                };
+                const tickets = (dados.tickets||[])
+                  .filter(t => !t.canceled && (t.baseStatus==='New' || t.baseStatus==='InAttendance' || t.baseStatus==='Stopped'))
+                  .filter(t => inRange(t.createdDate));
+                const perAgent = {};
+                tickets.forEach(t => {
+                    const a = t.owner || 'Não atribuído';
+                    (perAgent[a] ||= { open:0, closed:0, resolved:0, canceled:0, total:0 });
+                    perAgent[a].open++; perAgent[a].total++;
+                });
+                const data = { teams: [{ team: teamName, totals: { open: tickets.length, closed: 0, resolved: 0, canceled: 0, total: tickets.length }, perAgent }] };
+                render(data);
+            }catch(e){
+                console.error('Fallback relatório falhou', e);
+                elOut.innerHTML = '<p>Falha ao gerar relatório (404).</p>';
+            }
+        }
+
+        elBtn.addEventListener('click', gerar);
+        initTeams();
+    })();
+    </script>
 </body>
 </html>

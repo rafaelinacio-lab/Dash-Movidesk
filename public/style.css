@@ -164,6 +164,15 @@ body.dark .descricaoCompleta {
 }
 body.dark .adminSection { background: #1f2937; box-shadow: 0 6px 18px rgba(0,0,0,0.5); }
 
+/* Colapsável (Admin) */
+.adminSection.collapsible > h2 { cursor: pointer; user-select: none; }
+.adminSection.collapsible > h2::after {
+    content: '▼'; font-size: 12px; margin-left: 8px; opacity: .7;
+}
+.adminSection.collapsible.collapsed > h2::after { content: '►'; }
+/* Usa !important para sobrepor estilos inline (display:flex) */
+.adminSection.collapsible.collapsed > *:not(h2) { display: none !important; }
+
 .adminSection h2 {
     font-size: 20px;
     margin-bottom: 18px;

@@ -424,6 +424,100 @@ app.post("/api/melhorias/sugerir", async (req, res) => {
     }
 });
 
+/* ---------------- Relatórios ---------------- */
+// Retorna lista de equipes (para filtro)
+app.get("/api/report-teams", requireAdmin, async (req, res) => {
+    try {
+        const [rows] = await db.query("SELECT DISTINCT team FROM users WHERE team IS NOT NULL AND team <> '' ORDER BY team");
+        res.json(rows.map(r => r.team));
+    } catch (err) {
+        console.error("Erro ao listar equipes:", err.message);
+        res.status(500).json({ error: "Erro ao listar equipes" });
+    }
+});
+
+// Resumo por equipe e por agente, com filtros de status
+// GET /api/reports?teams=A,B  (admin pode listar múltiplas; não-admin usa sua própria equipe da sessão)
+app.get("/api/reports", async (req, res) => {
+    try {
+        if (!req.session.userId) return res.status(401).json({ error: "Não autenticado" });
+        const isAdminReq = req.session.role === "admin";
+        const MOVI_TOKEN = (process.env.MOVI_TOKEN || "").trim();
+        const MOVI_URL = (process.env.MOVI_URL || "https://api.movidesk.com/public/v1/tickets").trim();
+        if (!MOVI_TOKEN) return res.status(500).json({ error: "MOVI_TOKEN não configurado" });
+
+        const teamsParam = (req.query.teams || "").toString().trim();
+        let teams = [];
+        if (isAdminReq) {
+            teams = teamsParam ? teamsParam.split(",").map(s => s.trim()).filter(Boolean) : [];
+            if (!teams.length && req.session?.team) teams = [req.session.team];
+            if (!teams.length) return res.status(400).json({ error: "Informe ?teams ou tenha equipe na sessão" });
+        } else {
+            if (!req.session?.team) return res.status(400).json({ error: "Equipe não definida para o usuário" });
+            teams = [req.session.team];
+        }
+
+        // Funções auxiliares iguais às do dashboard
+        const isClosedOrResolved = (t) => t.baseStatus === "Closed" || t.baseStatus === "Resolved";
+        const isCanceled = (t) => {
+            if (t.baseStatus === "Canceled" || t.baseStatus === "Cancelled") return true;
+            const s = String(t.status || "").toLowerCase();
+            return s.includes("cancelad");
+        };
+
+        const fetchTeam = async (team) => {
+            try {
+                const filter = `ownerTeam eq '${team}' and (`+
+                    ["New","InAttendance","Stopped","Closed","Resolved","Canceled","Cancelled"]
+                        .map(s => `baseStatus eq '${s}'`).join(" or ")+
+                    ")";
+                const url = `${MOVI_URL}?token=${MOVI_TOKEN}&$top=500`+
+                    `&$select=id,baseStatus,status,ownerTeam,createdDate,closedIn`+
+                    `&$expand=owner($select=businessName)`+
+                    `&$filter=${encodeURIComponent(filter)}`;
+                const { data } = await axios.get(url, { timeout: 10000 });
+                const tickets = data.map(t => ({
+                    id: t.id,
+                    baseStatus: t.baseStatus,
+                    status: t.status || "",
+                    ownerTeam: t.ownerTeam || team,
+                    owner: t.owner?.businessName || "Não atribuído",
+                }));
+                return tickets;
+            } catch (err) {
+                console.error(`Erro ao buscar tickets para a equipe '${team}':`, err.message);
+                return [];
+            }
+        };
+
+        const results = [];
+        for (const team of teams) {
+            const tickets = await fetchTeam(team);
+            const agg = { open: 0, closed: 0, resolved: 0, canceled: 0, total: 0 };
+            const perAgent = {};
+            const inc = (agent, key) => {
+                (perAgent[agent] ||= { open:0, closed:0, resolved:0, canceled:0, total:0 });
+                perAgent[agent][key]++; perAgent[agent].total++;
+            };
+            tickets.forEach(t => {
+                const agent = t.owner || "Não atribuído";
+                let key;
+                if (isCanceled(t)) key = "canceled";
+                else if (t.baseStatus === "Closed") key = "closed";
+                else if (t.baseStatus === "Resolved") key = "resolved";
+                else key = "open"; // New, InAttendance, Stopped e demais não cancelados
+                agg[key]++; agg.total++;
+                inc(agent, key);
+            });
+            results.push({ team, totals: agg, perAgent });
+        }
+        res.json({ teams: results });
+    } catch (err) {
+        console.error("Erro em /api/reports:", err.message);
+        res.status(500).json({ error: "Erro ao gerar relatório" });
+    }
+});
+
 /* static files */
 
 /* start */
