@@ -619,7 +619,7 @@
 
         attachMoreHandlers();
         carregarDashboard();
-        setInterval(carregarDashboard, 300000);
+    setInterval(carregarDashboard, 180000);
         // 🔹 Mostrar botão Admin se role=admin
         fetch("/api/me")
             .then(r => r.json())
