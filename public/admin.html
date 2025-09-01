@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8" />
+    <title>Painel Admin - Gerenciar Usuários</title>
+    <link href="style.css" rel="stylesheet" />
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1 class="brandTitle">
+                <img src="/logo-viasoft.png" alt="Viasoft" class="headerLogo" />
+                Admin - <span>Gerenciamento de Usuários</span>
+            </h1>
+            <div class="acoes">
+                <button id="toggleTheme" class="btnGhost sm">🌙 Tema Escuro</button>
+                <a href="/dashboard" class="btnGhost sm">⬅️ Voltar</a>
+                <a href="/logout" id="logoutBtn" class="btnGhost sm danger">🚪 Sair</a>
+            </div>
+        </header>
+
+        <!-- Cadastro de Usuário -->
+        <section class="adminSection">
+            <h2>➕ Cadastrar Usuário</h2>
+            <form id="formNovoUsuario" class="adminForm">
+                <input type="text" id="novoUser" placeholder="Usuário" required />
+                <input type="password" id="novoPass" placeholder="Senha" required />
+                <select id="novoTeam" required>
+                    <option value="">Selecione a equipe...</option>
+                    <!-- ⚡ Lista de equipes gerada pelo JS -->
+                </select>
+                <select id="novoRole" required>
+                    <option value="user">Usuário</option>
+                    <option value="admin">Admin</option>
+                </select>
+                <button type="submit" class="btnSalvar">✅ Criar</button>
+            </form>
+        </section>
+
+        <!-- Lista de Usuários -->
+        <section class="adminSection">
+            <h2>👤 Usuários do Sistema</h2>
+            <table class="adminTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Usuário</th>
+                        <th>Equipe</th>
+                        <th>Role</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="usersTableBody"></tbody>
+            </table>
+        </section>
+    </div>
+
+    <div class="appFooter">Desenvolvido para Viasoft © 2025</div>
+
+    <script>
+        (async function () {
+            const tbody = document.getElementById("usersTableBody");
+            const formNovo = document.getElementById("formNovoUsuario");
+            const selectTeam = document.getElementById("novoTeam");
+
+            // ⚡ Lista de equipes
+            const EQUIPES = [
+                "AD TECH NEGOCIOS LTDA", "Administradores", "Agente", "Agrotitan - Equipe Consultores",
+                "Agrotitan - Equipe Técnica", "Agrotitan - Líderes", "Agrotitan - Suporte", "Agrotitan - Suporte Franquias",
+                "Agrotitan Fazendas - Equipe Técnica", "Agrotitan Fazendas - Suporte", "Analytics - B.I", "Analytics - B.I - Suporte",
+                "Assessoria Produto", "Aut. Comercial - Líderes", "Aut. Comercial - Suporte", "Aut. Comercial - Suporte Consultores",
+                "Borges e Mazete - Suporte", "Cands - Suporte", "Clientes", "Comercial", "Conselho Diretor", "Construshow - Equipe Técnica",
+                "Construshow - Líderes", "Construshow - Suporte", "Construshow - Suporte Franquias", "CRM - Equipe Técnica", "CRM - Suporte",
+                "CRM - VX", "Financeiro - VIASOFT", "GCC - Gestão de Combate ao Churn", "GO UP -  Suporte", "Ifact", "Link - Suporte",
+                "LZ - Suporte", "Melhorias Personalizadas - ENN", "Melhorias Personalizadas - Equipe de Analistas",
+                "Melhorias Personalizadas - Equipe de Desenvolvimento", "Melhorias Personalizadas - Executivos de relacionamento",
+                "Melhorias Personalizadas - Líderes", "MN Agrobusiness", "MP AGROTECH - Suporte", "Nimitz - Lideres", "Nimitz - Suporte",
+                "Nimitz - VX", "Ouvidoria", "Petroshow - Equipe Técnica", "Petroshow - Líderes", "Petroshow - Suporte", "PRODACON - Consultores",
+                "PRODACON - Suporte", "Serviços Fiscais - Equipe Técnica", "Serviços Fiscais - Suporte", "Serviços Fiscais - Suporte Franquias",
+                "TalentRH - Equipe Técnica", "TalentRH - Líderes", "TalentRH - Suporte", "TalentRH - Suporte Franquias", "VIASOFT - Canais",
+                "VIASOFT - Comitê de IA", "VIASOFT - Controladoria", "VIASOFT - Facilities", "VIASOFT - FinOps", "VIASOFT - HOK", "VIASOFT - HOK LMS",
+                "VIASOFT - Melhorias Personalizadas", "VIASOFT - Migrações", "VIASOFT - Sistemas Internos", "VIASOFT - Suporte a Personalizações",
+                "VIASOFT - Suporte Oracle Cloud", "VIASOFT - Support Leaders", "VIASOFT - Tecnologia", "Viasuper - Equipe Técnica", "Viasuper - Líderes",
+                "Viasuper - Suporte", "VOORS  - Suporte", "VOORS - Equipe Técnica", "VOORS - VX", "VX - AGROTITAN", "VX - AGROTITAN FAZENDAS",
+                "VX - CONSTRUSHOW", "VX - PETROSHOW"
+            ];
+
+            // Popular select de cadastro
+            EQUIPES.forEach(eq => {
+                const opt = document.createElement("option");
+                opt.value = eq;
+                opt.textContent = eq;
+                selectTeam.appendChild(opt);
+            });
+
+            // Cadastro de novo usuário
+            formNovo.addEventListener("submit", async (e) => {
+                e.preventDefault();
+                const username = document.getElementById("novoUser").value;
+                const password = document.getElementById("novoPass").value;
+                const team = document.getElementById("novoTeam").value;
+                const role = document.getElementById("novoRole").value;
+
+                const res = await fetch("/admin/users/create", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username, password, team, role })
+                });
+
+                if (res.ok) {
+                    alert("✅ Usuário criado!");
+                    formNovo.reset();
+                    carregarUsuarios();
+                } else {
+                    alert("❌ Erro ao criar usuário");
+                }
+            });
+
+            // Carregar usuários
+            async function carregarUsuarios() {
+                tbody.innerHTML = "<tr><td colspan='5'>Carregando...</td></tr>";
+                try {
+                    const resp = await fetch("/admin/users");
+                    if (!resp.ok) { tbody.innerHTML = "<tr><td colspan='5'>Erro ao carregar</td></tr>"; return; }
+                    const users = await resp.json();
+
+                    tbody.innerHTML = "";
+                    users.forEach(u => {
+                        const tr = document.createElement("tr");
+                        tr.innerHTML = `
+                <td>${u.id}</td>
+                <td>${u.username}</td>
+                <td><select data-team>${EQUIPES.map(eq => `<option value="${eq}" ${u.team === eq ? "selected" : ""}>${eq}</option>`).join("")}</select></td>
+                <td>
+                  <select data-role>
+                    <option value="user" ${u.role === "user" ? "selected" : ""}>Usuário</option>
+                    <option value="admin" ${u.role === "admin" ? "selected" : ""}>Admin</option>
+                    <option value="inactive" ${u.role === "inactive" ? "selected" : ""}>Inativo</option>
+                  </select>
+                </td>
+                <td>
+                  <button class="btnSalvar">💾 Salvar</button>
+                  <button class="btnInativar">🚫 Inativar</button>
+                  <button class="btnExcluir danger">🗑 Excluir</button>
+                </td>
+              `;
+
+                        // eventos
+                        tr.querySelector(".btnSalvar").addEventListener("click", async () => {
+                            const team = tr.querySelector("[data-team]").value;
+                            const role = tr.querySelector("[data-role]").value;
+                            const res = await fetch("/admin/users/update", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ userId: u.id, team, role })
+                            });
+                            alert(res.ok ? "✅ Atualizado!" : "❌ Erro ao atualizar");
+                        });
+
+                        tr.querySelector(".btnInativar").addEventListener("click", async () => {
+                            const res = await fetch("/admin/users/update", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ userId: u.id, role: "inactive", team: u.team })
+                            });
+                            alert(res.ok ? "🚫 Usuário inativado!" : "❌ Erro ao inativar");
+                            carregarUsuarios();
+                        });
+
+                        tr.querySelector(".btnExcluir").addEventListener("click", async () => {
+                            if (!confirm("Tem certeza que deseja excluir o usuário?")) return;
+                            const res = await fetch("/admin/users/delete", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ userId: u.id })
+                            });
+                            alert(res.ok ? "🗑 Usuário excluído!" : "❌ Erro ao excluir");
+                            carregarUsuarios();
+                        });
+
+                        tbody.appendChild(tr);
+                    });
+                } catch (err) {
+                    tbody.innerHTML = "<tr><td colspan='5'>Erro ao conectar.</td></tr>";
+                }
+            }
+
+            // Tema claro/escuro
+            document.getElementById("toggleTheme").addEventListener("click", () => {
+                document.body.classList.toggle("dark");
+                document.getElementById("toggleTheme").textContent =
+                    document.body.classList.contains("dark") ? "☀️ Tema Claro" : "🌙 Tema Escuro";
+            });
+
+            carregarUsuarios();
+        })();
+    </script>
+</body>
+</html>

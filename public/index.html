@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8" />
+    <title>Dashboard de Tickets</title>
+    <link href="style.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1 class="brandTitle">
+            <img src="/logo-viasoft.png" alt="Viasoft" class="headerLogo" />
+             Tickets <span> Movidesk</span>
+        </h1>
+        <div class="acoes">
+            <div class="notif">
+                <button id="notifBtn" class="btnGhost sm" aria-label="Notificações">
+                    🔔
+                    <span id="notifCount" class="notifCount" hidden>0</span>
+                </button>
+                <div id="notifPanel" class="notifPanel" aria-hidden="true">
+                    <div class="notifHead">
+                        <strong>Notificações</strong>
+                        <button id="notifClear" class="btnGhost sm">Limpar</button>
+                    </div>
+                    <ul id="notifList" class="notifList"></ul>
+                </div>
+            </div>
+            <button id="toggleTheme" class="btnGhost sm">🌙 Tema Escuro</button>
+            <a href="/logout" id="logoutBtn" class="btnGhost sm danger">🚪 Sair</a>
+        </div>
+
+    </header>
+
+    <!-- Widgets -->
+    <div class="cards">
+        <div class="cardWidget azul">
+            <div class="cardInfo"><h3>Tickets Criados (Mês)</h3><p id="totalTickets">0</p></div>
+            <div class="iconBox"><span>👥</span></div>
+        </div>
+        <div class="cardWidget laranja">
+            <div class="cardInfo"><h3>Novos</h3><p id="novos">0</p></div>
+            <div class="iconBox"><span>➕</span></div>
+        </div>
+        <div class="cardWidget verde">
+            <div class="cardInfo"><h3>Em Atendimento</h3><p id="emAtendimento">0</p></div>
+            <div class="iconBox"><span>📈</span></div>
+        </div>
+        <div class="cardWidget cinza">
+            <div class="cardInfo"><h3>Aguardando Validação ou Fornecedor</h3><p id="parados">0</p></div>
+            <div class="iconBox"><span>⏸️</span></div>
+        </div>
+
+        <!-- Em Aberto -->
+        <div class="cardWidget roxo">
+            <div class="cardInfo"><h3>Em Aberto</h3><p id="abertos">0</p></div>
+            <div class="iconBox"><span>📂</span></div>
+        </div>
+
+        <div class="cardWidget vermelho">
+            <div class="cardInfo"><h3>Críticos</h3><p id="criticos">0</p></div>
+            <div class="iconBox"><span>🛑</span></div>
+        </div>
+    </div>
+
+    <!-- Kanban + Gráficos -->
+    <div class="kanban">
+        <div class="coluna amarelo">
+            <h3>Novo (<span id="countNovos">0</span>)</h3>
+            <div class="lista" id="novosLista"></div>
+            <button class="btnMore" data-col="novos">Ver mais</button>
+        </div>
+
+        <div class="coluna azulClaro">
+            <h3>Em Atendimento (<span id="countAtendimento">0</span>)</h3>
+            <div class="lista" id="atendimentoLista"></div>
+            <button class="btnMore" data-col="atendimento">Ver mais</button>
+        </div>
+
+        <div class="coluna vermelhoClaro">
+            <h3>Aguardando (<span id="countParados">0</span>)</h3>
+            <div class="lista" id="paradosLista"></div>
+            <button class="btnMore" data-col="parados">Ver mais</button>
+        </div>
+
+        <!-- Coluna Vencidos -->
+        <div class="coluna vencidoClaro">
+            <h3>Vencidos (<span id="countVencidos">0</span>)</h3>
+            <div class="lista" id="vencidosLista"></div>
+            <button class="btnMore" data-col="vencidos">Ver mais</button>
+        </div>
+
+        <!-- Stack vertical dos gráficos -->
+        <div class="graficoStack">
+            <div class="graficoCard" id="cardPrioridade">
+                <h3>Distribuição por Prioridade</h3>
+                <canvas id="graficoDonut"></canvas>
+                <div id="graficoMsg" class="graficoMsg"></div>
+                <ul id="graficoLegenda" class="legendList"></ul>
+            </div>
+
+            <div class="graficoCard" id="cardAgentes">
+                <h3>Distribuição por Agente (ativos)</h3>
+                <canvas id="graficoDonutAgents"></canvas>
+                <div id="graficoMsgAgents" class="graficoMsg"></div>
+                <ul id="graficoLegendaAgents" class="legendList"></ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de alerta por palavras-chave -->
+<div id="inativacaoOverlay" class="modalOverlay" aria-hidden="true">
+    <div class="modalBox" role="dialog" aria-modal="true" aria-labelledby="inativacaoTitle">
+        <h3 id="inativacaoTitle">⚠️ Novos Tickets Urgentes</h3>
+        <ul id="inativacaoList"></ul>
+        <div class="modalActions">
+            <button id="inativacaoClose" class="btnGhost">Fechar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Selo fixo -->
+<div class="appFooter">Desenvolvido para Viasoft © 2025</div>
+
+<script>
+    (() => {
+        /* ---------- Paletas ---------- */
+        const urgencyColors = {
+            "Crítica":"#ef4444","Alta":"#f97316","Média":"#3b82f6","Baixa":"#6b7280","Não definida":"#9ca3af"
+        };
+        const agentPalette = [
+            "#3b82f6","#10b981","#f59e0b","#ef4444","#8b5cf6","#06b6d4",
+            "#84cc16","#ec4899","#a855f7","#f97316","#22c55e","#0ea5e9",
+            "#eab308","#dc2626","#14b8a6","#64748b","#d946ef","#60a5fa"
+        ];
+
+        /* ---------- Helpers ---------- */
+        const slug = (s) => (s||"").toString().normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();
+
+        // Palavras-chave: "contexto", "inativacao" (com ou sem acento) e "inativacao movidesk"
+        const matchesKeywordAlert = (text) => {
+            const st = slug(text);
+            const hasContexto   = st.includes("contexto");
+            const hasInativacao = st.includes("inativacao");
+            const hasMovidesk   = st.includes("movidesk");
+            return hasContexto || hasInativacao || (hasInativacao && hasMovidesk);
+        };
+
+        const isCanceled = (t) =>
+            t.baseStatus==="Canceled" || t.baseStatus==="Cancelled" || String(t.status||"").toLowerCase().includes("cancelad");
+
+        // Status considerados "ativos" no front
+        const ACTIVE_BASE = new Set(["New","InAttendance","Stopped"]);
+
+        // Detecta status detalhado “Aguardando - Fornecedor”
+        const isAguardFornecedor = (t) => {
+            const s = slug(t.status || "");
+            return s.includes("aguard") && s.includes("fornecedor");
+        };
+
+        /* ---------- PRIORIDADE: holders/legend/donut ---------- */
+        const ensureDonutHolders = () => {
+            const card = document.getElementById("cardPrioridade");
+            let canvas = document.getElementById("graficoDonut");
+            let msg = document.getElementById("graficoMsg");
+            let legenda = document.getElementById("graficoLegenda");
+            if (!canvas){canvas=document.createElement("canvas");canvas.id="graficoDonut";card.querySelector("h3").after(canvas);}
+            if (!msg){msg=document.createElement("div");msg.id="graficoMsg";msg.className="graficoMsg";canvas.after(msg);}
+            if (!legenda){legenda=document.createElement("ul");legenda.id="graficoLegenda";legenda.className="legendList";msg.after(legenda);}
+            return {canvas,msg,legenda};
+        };
+
+        const renderLegend = (prioridades) => {
+            const { legenda } = ensureDonutHolders();
+            legenda.innerHTML="";
+            const labels = Object.keys(prioridades||{});
+            if (!labels.length) return;
+            labels.forEach((label)=>{
+                const qty = prioridades[label] ?? 0;
+                const color = urgencyColors[label] || "#9ca3af";
+                const li = document.createElement("li");
+                const left = document.createElement("div"); left.className="legendLeft";
+                const dot = document.createElement("span"); dot.className="legendDot"; dot.style.background=color;
+                const name = document.createElement("span"); name.className="legendName"; name.textContent=label;
+                left.appendChild(dot); left.appendChild(name);
+                const qtyEl = document.createElement("span"); qtyEl.className="legendQty"; qtyEl.textContent=qty;
+                li.appendChild(left); li.appendChild(qtyEl);
+                legenda.appendChild(li);
+            });
+        };
+
+        const renderDonut = (prioridades) => {
+            const { canvas, msg } = ensureDonutHolders();
+            if (window.graficoDonut){ try{window.graficoDonut.destroy();}catch(_){}}
+            const labels = Object.keys(prioridades||{});
+            const theVals = Object.values(prioridades||{});
+            if (!labels.length){ if (msg) msg.textContent="Sem dados para exibir."; renderLegend({}); return; }
+            else if (msg) msg.textContent="";
+            window.graficoDonut = new Chart(canvas,{
+                type:"doughnut",
+                data:{ labels, datasets:[{ data:theVals, backgroundColor:labels.map(urg=>urgencyColors[urg]||"#9ca3af") }]},
+                options:{ plugins:{ legend:{ display:false } }, cutout:"60%" }
+            });
+            renderLegend(prioridades);
+        };
+
+        /* ---------- AGENTES: holders/legend/donut + dropdown ---------- */
+        const ensureDonutHoldersAgents = () => {
+            const card = document.getElementById("cardAgentes");
+            let canvas = document.getElementById("graficoDonutAgents");
+            let msg = document.getElementById("graficoMsgAgents");
+            let legenda = document.getElementById("graficoLegendaAgents");
+            if (!canvas){canvas=document.createElement("canvas");canvas.id="graficoDonutAgents";card.querySelector("h3").after(canvas);}
+            if (!msg){msg=document.createElement("div");msg.id="graficoMsgAgents";msg.className="graficoMsg";canvas.after(msg);}
+            if (!legenda){legenda=document.createElement("ul");legenda.id="graficoLegendaAgents";legenda.className="legendList";msg.after(legenda);}
+            return {canvas,msg,legenda};
+        };
+
+        let agentIdsMap = {};
+        const renderLegendAgents = (mapa) => {
+            const { legenda } = ensureDonutHoldersAgents();
+            legenda.innerHTML="";
+            const labels = Object.keys(mapa||{});
+            if (!labels.length) return;
+            labels.forEach((name,i)=>{
+                const qty = mapa[name] ?? 0;
+                const color = agentPalette[i % agentPalette.length];
+                const li = document.createElement("li");
+                const left = document.createElement("div"); left.className="legendLeft";
+                const dot = document.createElement("span"); dot.className="legendDot"; dot.style.background=color;
+                const nm  = document.createElement("span"); nm.className="legendName"; nm.textContent=name;
+                left.appendChild(dot); left.appendChild(nm);
+                const qtyEl = document.createElement("span"); qtyEl.className="legendQty"; qtyEl.textContent=qty;
+
+                const drop = document.createElement("div");
+                drop.className="legendTickets";
+                drop.setAttribute("aria-hidden","true");
+                const ids = (agentIdsMap[name]||[]).slice().sort((a,b)=>Number(a)-Number(b));
+                ids.forEach(id=>{
+                    const badge=document.createElement("span");
+                    badge.className="legendTicketBadge";
+                    badge.textContent=`#${id}`;
+                    drop.appendChild(badge);
+                });
+
+                li.addEventListener("click",()=>{
+                    legenda.querySelectorAll(".legendTickets.show").forEach(el=>{
+                        if (el!==drop){el.classList.remove("show");el.setAttribute("aria-hidden","true");}
+                    });
+                    const willShow=!drop.classList.contains("show");
+                    drop.classList.toggle("show",willShow);
+                    drop.setAttribute("aria-hidden",String(!willShow));
+                });
+
+                li.appendChild(left); li.appendChild(qtyEl);
+                legenda.appendChild(li);
+                const container=document.createElement("div"); container.style.width="100%"; container.appendChild(drop);
+                legenda.appendChild(container);
+            });
+        };
+
+        const renderDonutAgents = (mapa) => {
+            const { canvas, msg } = ensureDonutHoldersAgents();
+            if (window.graficoDonutAgents){ try{window.graficoDonutAgents.destroy();}catch(_){}}
+            const labels=Object.keys(mapa||{}), valores=Object.values(mapa||{});
+            if (!labels.length){ if (msg) msg.textContent="Sem dados para exibir."; renderLegendAgents({}); return; }
+            else if (msg) msg.textContent="";
+            const colors = labels.map((_,i)=>agentPalette[i%agentPalette.length]);
+            window.graficoDonutAgents = new Chart(canvas,{
+                type:"doughnut",
+                data:{ labels, datasets:[{ data:valores, backgroundColor:colors }]},
+                options:{ plugins:{ legend:{ display:false } }, cutout:"60%" }
+            });
+            renderLegendAgents(mapa);
+        };
+
+        /* ---------- Paginação por coluna ---------- */
+        const PAGE = 5;
+        const colData = {novos:[],atendimento:[],parados:[],vencidos:[]};
+        const visibleCount = {novos:PAGE,atendimento:PAGE,parados:PAGE,vencidos:PAGE};
+
+        /* ---------- Central de notificações (sino) ---------- */
+        const NOTIF_KEY = "movidesk.notifs";
+        const NOTIF_LAST_CLEAR_KEY = "movidesk.notifs.lastClear";
+        const ymdLocal = (d) => {
+            const y = d.getFullYear();
+            const m = String(d.getMonth()+1).padStart(2,"0");
+            const day = String(d.getDate()).padStart(2,"0");
+            return `${y}-${m}-${day}`;
+        };
+
+        let notifStore = [];
+        const loadNotifs = () => {
+            try { notifStore = JSON.parse(localStorage.getItem(NOTIF_KEY)||"[]"); }
+            catch { notifStore = []; }
+        };
+        const saveNotifs = () => localStorage.setItem(NOTIF_KEY, JSON.stringify(notifStore));
+
+        const notifBtn   = document.getElementById("notifBtn");
+        theNotifCount = document.getElementById("notifCount");
+        const notifCount = theNotifCount; // alias só pra não quebrar quem já usa
+        const notifPanel = document.getElementById("notifPanel");
+        const notifList  = document.getElementById("notifList");
+        const notifClear = document.getElementById("notifClear");
+
+        const renderNotifs = () => {
+            notifList.innerHTML = "";
+            if (!notifStore.length){
+                const li = document.createElement("li");
+                li.className = "notifItem";
+                li.innerHTML = "Nenhuma notificação por enquanto.";
+                notifList.appendChild(li);
+            } else {
+                notifStore
+                    .slice()
+                    .sort((a,b)=>b.time-a.time)
+                    .forEach(n => {
+                        const li = document.createElement("li");
+                        li.className = "notifItem";
+                        const dt = new Date(n.time);
+                        li.innerHTML = `<b>#${n.id}</b> — ${n.subject}<br><small>${dt.toLocaleString()}</small>`;
+                        li.addEventListener("click", ()=>{
+                            notifPanel.classList.remove("show");
+                            notifPanel.setAttribute("aria-hidden","true");
+                            focusTicketById(n.id);
+                        });
+                        notifList.appendChild(li);
+                    });
+            }
+
+            if (notifStore.length){
+                notifCount.hidden = false;
+                notifCount.textContent = String(notifStore.length);
+            } else {
+                notifCount.hidden = true;
+            }
+        };
+
+        const pushNotif = ({id, subject}) => {
+            if (!notifStore.some(n => n.id === id)){
+                notifStore.push({ id, subject, time: Date.now() });
+                saveNotifs(); renderNotifs();
+            }
+        };
+
+        const clearNotifs = () => {
+            notifStore = [];
+            saveNotifs();
+            renderNotifs();
+            localStorage.setItem(NOTIF_LAST_CLEAR_KEY, ymdLocal(new Date()));
+        };
+
+        notifBtn.addEventListener("click", ()=>{
+            const showing = notifPanel.classList.toggle("show");
+            notifPanel.setAttribute("aria-hidden", String(!showing));
+        });
+        notifClear.addEventListener("click", ()=>{ clearNotifs(); });
+        document.addEventListener("click", (ev)=>{
+            if (!notifPanel.contains(ev.target) && !notifBtn.contains(ev.target)){
+                notifPanel.classList.remove("show");
+                notifPanel.setAttribute("aria-hidden","true");
+            }
+        });
+        loadNotifs(); renderNotifs();
+
+        // Limpeza diária às 18h (horário do navegador)
+        const scheduleDailyNotifClearAt18 = () => {
+            const now = new Date();
+            const todayISO = ymdLocal(now);
+            const last = localStorage.getItem(NOTIF_LAST_CLEAR_KEY) || "";
+
+            const today18 = new Date(); today18.setHours(18,0,0,0);
+            if (now >= today18 && last !== todayISO) {
+                clearNotifs();
+            }
+
+            const next = new Date(); next.setHours(18,0,0,0);
+            if (now >= next) next.setDate(next.getDate() + 1);
+
+            const msUntilNext = next.getTime() - now.getTime();
+            setTimeout(() => {
+                clearNotifs();
+                setInterval(clearNotifs, 24*60*60*1000);
+            }, msUntilNext);
+        };
+        scheduleDailyNotifClearAt18();
+
+        /* ---------- Modal de Palavras-chave ---------- */
+        const alertedIds = new Set(); // tickets já alertados nesta sessão
+        let alertAutoTimer = null;    // timer para fechar modal em 1 min
+
+        const closeInativacaoModal = () => {
+            const overlay = document.getElementById("inativacaoOverlay");
+            overlay.classList.remove("show");
+            overlay.setAttribute("aria-hidden","true");
+            if (alertAutoTimer){ clearTimeout(alertAutoTimer); alertAutoTimer = null; }
+        };
+
+        const openInativacaoModal = (items) => {
+            if (!items.length) return;
+            const overlay = document.getElementById("inativacaoOverlay");
+            const list = document.getElementById("inativacaoList");
+            list.innerHTML = "";
+            items.forEach(({id, subject}) => {
+                const li = document.createElement("li");
+                li.textContent = `#${id} — ${subject}`;
+                li.addEventListener("click", () => {
+                    closeInativacaoModal();
+                    focusTicketById(id);
+                });
+                list.appendChild(li);
+            });
+            overlay.classList.add("show");
+            overlay.setAttribute("aria-hidden","false");
+
+            // fecha sozinho em 60s
+            if (alertAutoTimer) clearTimeout(alertAutoTimer);
+            alertAutoTimer = setTimeout(closeInativacaoModal, 60_000);
+        };
+
+        document.getElementById("inativacaoClose").addEventListener("click", closeInativacaoModal);
+
+        /* ---------- Cards ---------- */
+        const buildTicketCard = (t) => {
+            const statusSlug = slug(t.status || "nao definido");
+            const urgSlug  = slug(t.urgency || "Não definida");
+
+            // Previsão de solução formatada e classe de cor
+            let prevSolTxt = "-", prevClass = "gray";
+            if (t.previsaoSolucao){
+                const today = new Date(); const baseToday = new Date(today.getFullYear(),today.getMonth(),today.getDate());
+                const due = new Date(t.previsaoSolucao+"T23:59:59");
+                const diffDays = Math.ceil((due - baseToday)/86400000);
+                prevSolTxt = due.toLocaleDateString();
+                if (diffDays < 0 || t.overdue) prevClass = "red";
+                else if (diffDays <= 2)       prevClass = "orange";
+                else                          prevClass = "green";
+            }
+
+            const hasAlert = matchesKeywordAlert(t.subject||"");
+
+            const card = document.createElement("div");
+            card.className = "ticket" + (hasAlert ? " alert" : "");
+            card.dataset.ticketId = t.id;
+
+            if (t.overdue && !hasAlert) card.style.outline = "2px solid rgba(220,38,38,.45)";
+
+            card.innerHTML = `
+      <h4>#${t.id} - ${t.subject}</h4>
+      <p><b>Urgência:</b> <span class="pill urg-${urgSlug}">${t.urgency || "Não definida"}</span></p>
+      <p><b>Status detalhado:</b> <span class="statusDetalhado status-${statusSlug}">${t.status || "Não definido"}</span></p>
+      <p><b>Prev. solução:</b> <span class="badgePrev ${prevClass}">${prevSolTxt}</span></p>
+      <div class="responsavelBox">
+        <span class="badge responsavel">${t.owner}</span>
+      </div>
+      <small>Criado em ${t.createdDate ? new Date(t.createdDate).toLocaleDateString() : "-"}</small>
+    `;
+            return card;
+        };
+
+        const renderColumns = () => {
+            document.getElementById("countNovos").textContent       = colData.novos.length;
+            document.getElementById("countAtendimento").textContent = colData.atendimento.length;
+            document.getElementById("countParados").textContent     = colData.parados.length;
+            document.getElementById("countVencidos").textContent    = colData.vencidos.length;
+
+            const defs = [
+                {key:"novos",listId:"novosLista",btnSel:'button[data-col="novos"]'},
+                {key:"atendimento",listId:"atendimentoLista",btnSel:'button[data-col="atendimento"]'},
+                {key:"parados",listId:"paradosLista",btnSel:'button[data-col="parados"]'},
+                {key:"vencidos",listId:"vencidosLista",btnSel:'button[data-col="vencidos"]'},
+            ];
+
+            defs.forEach(({key,listId,btnSel})=>{
+                const list=document.getElementById(listId);
+                const btn=document.querySelector(btnSel);
+                list.innerHTML="";
+                const total=colData[key].length;
+                const showN=Math.min(visibleCount[key], total);
+                colData[key].slice(0,showN).forEach(t=>list.appendChild(buildTicketCard(t)));
+                if (btn) btn.style.display = total > showN ? "block" : "none";
+            });
+        };
+
+        const attachMoreHandlers = () => {
+            document.querySelectorAll(".btnMore").forEach(btn=>{
+                btn.addEventListener("click",()=>{
+                    const col=btn.getAttribute("data-col");
+                    visibleCount[col]+=PAGE;
+                    renderColumns();
+                });
+            });
+        };
+
+        // Foca um ticket no kanban, expandindo a paginação se necessário
+        const focusTicketById = (id) => {
+            const normId = String(id);
+            const colsOrder = ["novos","atendimento","parados","vencidos"];
+
+            let found = null;
+            for (const key of colsOrder){
+                const idx = colData[key].findIndex(t => String(t.id) === normId);
+                if (idx !== -1){ found = { key, idx }; break; }
+            }
+
+            const ensureHighlight = () => {
+                const el = document.querySelector(`[data-ticket-id="${normId}"]`);
+                if (el){
+                    el.scrollIntoView({ behavior:"smooth", block:"center", inline:"center" });
+                    el.classList.add("alert");
+                    el.style.transition = "box-shadow .2s ease";
+                    el.style.boxShadow  = "0 0 0 4px rgba(239,68,68,.25)";
+                    setTimeout(()=>{ el.style.boxShadow=""; }, 400);
+                }
+            };
+
+            if (!found){ ensureHighlight(); return; }
+
+            const { key, idx } = found;
+            if (visibleCount[key] < idx + 1){
+                visibleCount[key] = idx + 1; // expande até o card
+                renderColumns();
+            }
+            requestAnimationFrame(ensureHighlight);
+        };
+
+        /* ---------- Carga principal ---------- */
+        const carregarDashboard = async () => {
+            let dados;
+            try{
+                const resp = await fetch("/api/tickets");
+                if (resp.status === 401) { window.location.href = "/login"; return; }
+                dados = await resp.json();
+            }catch(e){
+                console.error("Erro ao buscar /api/tickets:", e);
+                const { msg } = ensureDonutHolders(); if (msg) msg.textContent="Erro ao buscar dados."; renderLegend({});
+                const ag = ensureDonutHoldersAgents(); if (ag.msg) ag.msg.textContent="Erro ao buscar dados."; renderLegendAgents({});
+                return;
+            }
+
+            // Total do mês (vem do backend)
+            document.getElementById("totalTickets").innerText = dados.counts?.MonthOpenedAll ?? 0;
+
+            // Reset colunas/paginadores
+            colData.novos = []; colData.atendimento = []; colData.parados = []; colData.vencidos = [];
+            visibleCount.novos = visibleCount.atendimento = visibleCount.parados = visibleCount.vencidos = PAGE;
+
+            // Ativos = base New|InAttendance|Stopped OU status detalhado “Aguardando - Fornecedor”; exclui fechados/resolvidos/cancelados
+            const ativos = (dados.tickets||[]).filter(t=>{
+                if (isCanceled(t)) return false;
+                if (t.baseStatus==="Closed" || t.baseStatus==="Resolved") return false;
+                return ACTIVE_BASE.has(t.baseStatus) || isAguardFornecedor(t);
+            });
+
+            // Preenche colunas — tickets NOVOS que batem alerta vão para o TOPO de "Novos" (mesmo se overdue)
+            const toAlert = [];
+            ativos.forEach(t=>{
+                const isNew = t.baseStatus === "New";
+                const hit   = isNew && matchesKeywordAlert(t.subject||"");
+
+                if (hit && !alertedIds.has(t.id)){
+                    toAlert.push({id:t.id, subject:t.subject||"(sem assunto)"});
+                }
+
+                if (isNew && hit){
+                    colData.novos.unshift(t); // 🔝 topo
+                    return;                   // evita duplicar em outras colunas
+                }
+
+                if (t.overdue) colData.vencidos.push(t);
+                else if (isNew) colData.novos.push(t);
+                else if (t.baseStatus==="InAttendance") colData.atendimento.push(t);
+                else if (t.baseStatus==="Stopped" || isAguardFornecedor(t)) colData.parados.push(t);
+            });
+
+            // Widgets calculados a partir das colunas/ativos
+            document.getElementById("novos").innerText          = colData.novos.length;
+            document.getElementById("emAtendimento").innerText  = colData.atendimento.length;
+            document.getElementById("parados").innerText        = colData.parados.length; // inclui “Aguardando - Fornecedor”
+            document.getElementById("abertos").innerText        = colData.novos.length + colData.atendimento.length + colData.parados.length;
+            document.getElementById("criticos").innerText       = ativos.filter(t=>t.urgency==="Crítica").length;
+
+            renderColumns();
+
+            // Notificações + modal para alertas
+            if (toAlert.length){
+                toAlert.forEach(it=>{ alertedIds.add(it.id); pushNotif(it); });
+                openInativacaoModal(toAlert);
+            }
+
+            // Donut prioridade (fallback se precisar)
+            let prioridades = dados.countsPerUrgency;
+            if (!prioridades || !Object.keys(prioridades).length){
+                const calc={}; ativos.forEach(t=>{ const u=t.urgency||"Não definida"; calc[u]=(calc[u]||0)+1; });
+                prioridades = calc;
+            }
+            renderDonut(prioridades);
+
+            // IDs por agente (ativos)
+            agentIdsMap = {};
+            ativos.forEach(t => { const name=t.owner||"Não atribuído"; (agentIdsMap[name] ||= []).push(t.id); });
+
+            // Donut agentes (usa mapa acima)
+            let porAgente = dados.countsPerOwner;
+            if (!porAgente || !Object.keys(porAgente).length){
+                porAgente = {}; Object.keys(agentIdsMap).forEach(n => porAgente[n] = agentIdsMap[n].length);
+            }
+            renderDonutAgents(porAgente);
+        };
+
+        // Tema claro/escuro
+        document.getElementById("toggleTheme").addEventListener("click",()=>{
+            document.body.classList.toggle("dark");
+            document.getElementById("toggleTheme").textContent =
+                document.body.classList.contains("dark") ? "☀️ Tema Claro" : "🌙 Tema Escuro";
+        });
+
+        attachMoreHandlers();
+        carregarDashboard();
+        setInterval(carregarDashboard, 300000);
+        // 🔹 Mostrar botão Admin se role=admin
+        fetch("/api/me")
+            .then(r => r.json())
+            .then(user => {
+                if (user.role === "admin") {
+                    document.getElementById("adminBtn").style.display = "flex";
+                }
+            })
+            .catch(err => console.error("Erro ao verificar role:", err));
+    })();
+    // 🔹 Verifica se usuário é admin e exibe botão no header
+    const checarAdmin = async () => {
+        try {
+            const resp = await fetch("/api/me");
+            if (!resp.ok) return;
+            const user = await resp.json();
+            if (user.role === "admin") {
+                const container = document.querySelector(".acoes");
+                if (!document.getElementById("adminBtn")) {
+                    const link = document.createElement("a");
+                    link.href = "/admin.html";
+                    link.id = "adminBtn";
+                    link.className = "btnGhost sm";
+                    link.textContent = "⚙️ Admin";
+                    container.insertBefore(link, document.getElementById("logoutBtn"));
+                }
+            }
+        } catch (err) {
+            console.error("Erro ao checar admin:", err);
+        }
+    };
+
+    checarAdmin();
+
+</script>
+</body>
+</html>

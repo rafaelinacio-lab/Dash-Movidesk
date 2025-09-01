@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8" />
+    <title>Login • Movidesk - Sistemas Internos</title>
+    <link href="public/style.css" rel="stylesheet" />
+    <style>
+        /* estilos mínimos extras para centralizar o cartão de login */
+        .loginWrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
+        .loginCard{
+            width:min(420px,96vw); background:#fff; color:#111827; border:1px solid #e5e7eb; border-radius:14px;
+            box-shadow:0 12px 40px rgba(0,0,0,.12); padding:22px;
+        }
+        body.dark .loginCard{ background:#1f2937; color:#f9fafb; border-color:#374151; }
+        .loginCard h1{margin:0 0 12px;font-size:18px;display:flex;align-items:center;gap:10px}
+        .loginCard label{display:block;font-size:12px;margin:10px 0 6px;opacity:.85}
+        .loginCard input{
+            width:100%; padding:10px 12px; border:1px solid #e5e7eb; border-radius:10px; background:#fff; color:#111827;
+        }
+        body.dark .loginCard input{ background:#111827; color:#f9fafb; border-color:#374151; }
+        .loginActions{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:14px}
+        .btn{padding:10px 14px;border-radius:10px;border:1px solid transparent;font-weight:700;cursor:pointer}
+        .btnPrimary{background:#2563eb;color:#fff}
+        .btnGhost{background:#f3f4f6;color:#111827;border-color:#e5e7eb}
+        body.dark .btnGhost{background:#111827;color:#e5e7eb;border-color:#374151}
+        .muted{font-size:12px;opacity:.8}
+    </style>
+</head>
+<body>
+<div class="loginWrap">
+    <form class="loginCard" method="POST" action="/auth/login" autocomplete="on">
+        <h1><img src="/public/logo-viasoft.png" alt="Viasoft" style="height:36px"> Login</h1>
+        <label for="username">Usuário</label>
+        <input id="username" name="username" required autofocus />
+        <label for="password">Senha</label>
+        <input id="password" name="password" type="password" required />
+        <div class="loginActions">
+            <button class="btn btnPrimary" type="submit">Entrar</button>
+            <span class="muted">Dica: peça ao admin para criar seu acesso.</span>
+        </div>
+    </form>
+</div>
+</body>
+</html>
