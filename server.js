@@ -367,9 +367,65 @@ app.get("/api/tickets", async (req, res) => {
 });
 
 // Rotas para melhorias
+app.get("/api/melhorias", async (req, res) => {
+    try {
+        const data = await fs.readFile(MELHORIAS_PATH, "utf-8");
+        const melhorias = JSON.parse(data);
+        melhorias.forEach(m => {
+            if (!m.status) m.status = "Enviada";
+            if (!m.id) m.id = Math.random().toString(36).slice(2, 10);
+        });
+        await fs.writeFile(MELHORIAS_PATH, JSON.stringify(melhorias, null, 2));
+        res.json(melhorias);
+    } catch (err) {
+        res.status(500).json({ error: "Erro ao carregar melhorias" });
+    }
+});
+
+app.post("/api/melhorias/status", async (req, res) => {
+    const { id, status } = req.body;
+    if (!id || !status) return res.status(400).json({ error: "Dados obrigatórios" });
+    try {
+        const data = await fs.readFile(MELHORIAS_PATH, "utf-8");
+        const melhorias = JSON.parse(data);
+        const idx = melhorias.findIndex(m => m.id === id);
+        if (idx === -1) return res.status(404).json({ error: "Melhoria não encontrada" });
+        melhorias[idx].status = status;
+        await fs.writeFile(MELHORIAS_PATH, JSON.stringify(melhorias, null, 2));
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: "Erro ao atualizar melhoria" });
+    }
+});
+app.post("/api/melhorias/sugerir", async (req, res) => {
+    const { titulo, descricao, autor } = req.body;
+    if (!titulo || !descricao || !autor) {
+        return res.status(400).json({ error: "Campos obrigatórios ausentes" });
+    }
+    try {
+        // Carrega melhorias existentes
+        let melhorias = [];
+        try {
+            const data = await fs.readFile(MELHORIAS_PATH, "utf-8");
+            melhorias = JSON.parse(data);
+        } catch {}
+        // Adiciona nova melhoria
+        melhorias.push({
+            titulo,
+            descricao,
+            autor,
+            data: new Date().toISOString()
+        });
+        await fs.writeFile(MELHORIAS_PATH, JSON.stringify(melhorias, null, 2));
+        res.json({ success: true });
+    } catch (err) {
+        console.error("❌ Erro ao salvar melhoria:", err);
+        res.status(500).json({ error: "Erro ao salvar melhoria" });
+    }
+});
 
 /* static files */
-app.use(express.static("public"));
 
 /* start */
+app.use(express.static("public"));
 app.listen(PORT, () => console.log(`✅ Servidor rodando em http://localhost:${PORT}`));

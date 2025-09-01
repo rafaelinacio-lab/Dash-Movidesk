@@ -8,7 +8,6 @@
 </head>
 <body>
 <div class="container">
-    <button id="btnMelhoria" class="btnPrimary" style="position:absolute;top:24px;right:24px;z-index:10;">💡 Sugerir Melhoria</button>
     <header>
         <h1 class="brandTitle">
             <img src="/logo-viasoft.png" alt="Viasoft" class="headerLogo" />
@@ -29,6 +28,7 @@
                 </div>
             </div>
             <button id="toggleTheme" class="btnGhost sm">🌙 Tema Escuro</button>
+                <button id="btnMelhoria" class="btnGhost sm" title="Sugerir melhoria">💡 Sugerir Melhoria</button>
             <a href="/logout" id="logoutBtn" class="btnGhost sm danger">🚪 Sair</a>
         </div>
 
@@ -129,7 +129,7 @@
         <form id="formMelhoria" style="display:flex;flex-direction:column;gap:10px;">
             <input type="text" id="melhoriaTitulo" placeholder="Título da melhoria" required />
             <textarea id="melhoriaDescricao" placeholder="Descreva a sugestão" required rows="4"></textarea>
-            <input type="text" id="melhoriaAutor" placeholder="Seu nome ou usuário" required />
+            <input type="text" id="melhoriaAutor" placeholder="Seu nome ou usuário" required readonly />
             <div style="display:flex;gap:10px;justify-content:flex-end;">
                 <button type="submit" class="btnSalvar">Enviar</button>
                 <button type="button" id="fecharMelhoria" class="btnGray">Cancelar</button>
@@ -147,7 +147,24 @@
         const modalMelhoria = document.getElementById("modalMelhoria");
         const formMelhoria = document.getElementById("formMelhoria");
         const fecharMelhoria = document.getElementById("fecharMelhoria");
+        const melhoriaAutor = document.getElementById("melhoriaAutor");
+
+        // Função para obter usuário logado da API
+        async function getUsuarioLogado() {
+            try {
+                const res = await fetch("/api/me");
+                if (!res.ok) return "Usuário";
+                const user = await res.json();
+                return user.username || "Usuário";
+            } catch {
+                return "Usuário";
+            }
+        }
+
         btnMelhoria.onclick = () => {
+            getUsuarioLogado().then(nome => {
+                melhoriaAutor.value = nome;
+            });
             modalMelhoria.classList.add("show");
             modalMelhoria.setAttribute("aria-hidden","false");
         };
@@ -159,7 +176,7 @@
             e.preventDefault();
             const titulo = document.getElementById("melhoriaTitulo").value;
             const descricao = document.getElementById("melhoriaDescricao").value;
-            const autor = document.getElementById("melhoriaAutor").value;
+            const autor = melhoriaAutor.value;
             const res = await fetch("/api/melhorias/sugerir", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },

@@ -20,40 +20,54 @@ header h1 span { color: #2563eb; }
 
 /* ===== Botões header ===== */
 .acoes { display: flex; gap: 10px; align-items: center; }
-.acoes button,
-.acoes a {
-    display: flex; align-items: center; gap: 6px;
-    padding: 6px 12px; font-size: 13px;
-    border-radius: 6px; cursor: pointer;
-    font-weight: 600; border: 1px solid #d1d5db;
-    background: #f9fafb; color: #111827;
-    transition: all .2s ease; text-decoration: none;
+/* Tickets (melhorias) */
+.ticket {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    padding: 18px 22px;
+    margin-bottom: 18px;
+    border: 1px solid #e5e7eb;
+    transition: box-shadow .2s;
+    position: relative;
 }
-.acoes button:hover, .acoes a:hover { background: #e5e7eb; }
-
-body.dark .acoes button, body.dark .acoes a {
-    background: #1f2937; border-color: #374151; color: #f9fafb;
+.ticket:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
 }
-body.dark .acoes button:hover, body.dark .acoes a:hover { background: #374151; }
-
-/* Botão sair */
-#logoutBtn { color: #dc2626; border: 1px solid #fca5a5; background: #fff; }
-#logoutBtn:hover { background: #fee2e2; }
-body.dark #logoutBtn { color: #fca5a5; border-color: #f87171; background: #1f2937; }
-body.dark #logoutBtn:hover { background: #7f1d1d; }
-
-/* Botão Admin */
-#adminBtn {
-    color: #fff; border: 1px solid #2563eb; background: #2563eb; font-weight: 700;
+.badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 16px;
+    font-size: 13px;
+    color: #fff;
+    font-weight: 600;
+    margin-right: 8px;
 }
-#adminBtn:hover {
-    background: #1d4ed8; border-color: #1d4ed8;
-    box-shadow: 0 0 8px rgba(37,99,235,0.4);
+.badge[data-status="Rejeitada"] {
+    background: #dc2626 !important;
 }
-body.dark #adminBtn { color: #fff; border-color: #3b82f6; background: #1e40af; }
-body.dark #adminBtn:hover {
-    background: #1d4ed8; border-color: #2563eb;
-    box-shadow: 0 0 8px rgba(59,130,246,0.6);
+.btnSalvar, .btnSuccess, .btnDanger, .btnGhost {
+    border: none;
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-size: 14px;
+    cursor: pointer;
+    margin-right: 6px;
+    transition: background .2s;
+}
+.btnSalvar { background: #2563eb; color: #fff; }
+.btnSuccess { background: #16a34a; color: #fff; }
+.btnDanger { background: #dc2626; color: #fff; }
+.btnGhost { background: #f3f4f6; color: #222; }
+.btnGhost:hover { background: #e5e7eb; }
+.descricaoCompleta {
+    background: #f9fafb;
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 15px;
+    color: #222;
+    margin-top: 6px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
 }
 
 /* Botão Tema */
@@ -240,6 +254,7 @@ body.dark .cardWidget::after { background: rgba(255,255,255,0.15); }
 .cardWidget.azul    { background: linear-gradient(135deg, #eff6ff, #dbeafe); }
 .cardWidget.verde   { background: linear-gradient(135deg, #ecfdf5, #d1fae5); }
 .cardWidget.laranja { background: linear-gradient(135deg, #fff7ed, #ffedd5); }
+.cardWidget.vermelha { background: linear-gradient(135deg, #fee2e2, #fecaca); color: #dc2626; }
 .cardWidget.vermelho{ background: linear-gradient(135deg, #fef2f2, #fee2e2); }
 .cardWidget.cinza   { background: linear-gradient(135deg, #f3f4f6, #e5e7eb); }
 .cardWidget.roxo    { background: linear-gradient(135deg, #f5f3ff, #ede9fe); }
@@ -247,6 +262,7 @@ body.dark .cardWidget::after { background: rgba(255,255,255,0.15); }
 body.dark .cardWidget.azul    { background: linear-gradient(135deg, #1e3a8a, #1e40af); color:#f9fafb; }
 body.dark .cardWidget.verde   { background: linear-gradient(135deg, #065f46, #047857); color:#f9fafb; }
 body.dark .cardWidget.laranja { background: linear-gradient(135deg, #9a3412, #c2410c); color:#f9fafb; }
+body.dark .cardWidget.vermelha { background: linear-gradient(135deg, #7f1d1d, #991b1b); color:#f9fafb; }
 body.dark .cardWidget.vermelho{ background: linear-gradient(135deg, #7f1d1d, #991b1b); color:#f9fafb; }
 body.dark .cardWidget.cinza   { background: linear-gradient(135deg, #374151, #1f2937); color:#f9fafb; }
 body.dark .cardWidget.roxo    { background: linear-gradient(135deg, #4c1d95, #5b21b6); color:#f9fafb; }
@@ -380,11 +396,91 @@ body.dark .status-ematendimento { background: #f59e0b; color: #fff !important; }
 .modalOverlay.show{ display:flex; }
 .modalBox{
     background:#fff; color:#111827; border-radius:14px; padding:18px 18px 12px;
-    width:min(560px,92vw); box-shadow:0 24px 80px rgba(0,0,0,.35); max-height:80vh; overflow:auto;
+    width:100%; max-width:600px; box-shadow:0 24px 80px rgba(0,0,0,.35); max-height:80vh; overflow-y:auto; overflow-x:hidden;
 }
 body.dark .modalBox{ background:#1f2937; color:#f9fafb; }
 .modalBox h3{ margin:0 0 6px; font-size:18px; }
+.modalBox h3 {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
 .modalBox p{ margin:4px 0 10px; opacity:.9; }
+/* Inputs do modal ajustados para largura máxima */
+.modalBox input,
+.modalBox textarea {
+    max-width: 540px;
+    width: 96%;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1.5px solid #d1d5db;
+    background: #f9fafb;
+    color: #111827;
+    font-size: 16px;
+    margin-bottom: 12px;
+    transition: border 0.2s, box-shadow 0.2s;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+.modalBox input:focus,
+.modalBox textarea:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px #2563eb33;
+    outline: none;
+}
+.modalBox textarea {
+    resize: vertical;
+    min-height: 80px;
+    max-height: 200px;
+}
+.modalBox input[readonly] {
+    background: #e5e7eb;
+    color: #6b7280;
+    font-style: italic;
+}
+.modalActions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 8px;
+}
+.modalBox .btnSalvar {
+    background: linear-gradient(90deg,#16a34a 60%,#22c55e 100%);
+    color: #fff;
+    border-radius: 8px;
+    font-weight: 600;
+    padding: 9px 28px;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(22,163,74,0.08);
+    transition: background 0.2s, box-shadow 0.2s;
+}
+.modalBox .btnSalvar:hover {
+    background: linear-gradient(90deg,#22c55e 60%,#16a34a 100%);
+    box-shadow: 0 4px 16px rgba(22,163,74,0.14);
+}
+.modalBox .btnGray {
+    background: #e5e7eb;
+    color: #374151;
+    border-radius: 8px;
+    font-weight: 600;
+    padding: 9px 28px;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(55,65,81,0.08);
+    transition: background 0.2s, box-shadow 0.2s;
+}
+.modalBox .btnGray:hover {
+    background: #d1d5db;
+    box-shadow: 0 4px 16px rgba(55,65,81,0.14);
+}
 
 /* ===== Painel de Notificações ===== */
 .notif { position: relative; }

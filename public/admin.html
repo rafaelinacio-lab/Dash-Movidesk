@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8" />
-    <title>Painel Admin - Gerenciar Usuários</title>
+    <title>Painel Administrador</title>
     <link href="style.css" rel="stylesheet" />
 </head>
 <body>
@@ -27,6 +27,7 @@
                 <div class="cardWidget azul"><div class="cardInfo"><h3>Enviadas</h3><p id="melhoriasEnviadas">0</p></div></div>
                 <div class="cardWidget laranja"><div class="cardInfo"><h3>Em Análise</h3><p id="melhoriasAnalise">0</p></div></div>
                 <div class="cardWidget verde"><div class="cardInfo"><h3>Implementadas</h3><p id="melhoriasImpl">0</p></div></div>
+                <div class="cardWidget vermelha"><div class="cardInfo"><h3>Rejeitadas</h3><p id="melhoriasRejeitadas">0</p></div></div>
             </div>
             <div class="adminSection" style="padding:0;box-shadow:none;">
                 <h3 style="margin:10px 0 8px 8px;font-size:16px;font-weight:600;">📝 Lista de Sugestões</h3>
@@ -100,25 +101,39 @@
                     document.getElementById("melhoriasEnviadas").textContent = melhorias.filter(m=>m.status==="Enviada").length;
                     document.getElementById("melhoriasAnalise").textContent = melhorias.filter(m=>m.status==="Em Análise").length;
                     document.getElementById("melhoriasImpl").textContent = melhorias.filter(m=>m.status==="Implementada").length;
+                    document.getElementById("melhoriasRejeitadas").textContent = melhorias.filter(m=>m.status==="Rejeitada").length;
                     // Cards
                     lista.innerHTML = "";
-                    melhorias.slice().reverse().forEach(m => {
+                    // Cards resumidos e melhorias rejeitadas
+                    const melhoriasRejeitadas = melhorias.filter(m => m.status === "Rejeitada");
+                    const melhoriasNormais = melhorias.filter(m => m.status !== "Rejeitada");
+                    melhoriasNormais.slice().reverse().forEach(m => {
                         const card = document.createElement("div");
                         card.className = "ticket";
                         card.style.minHeight = "unset";
+                        // Resumo: mostra só título, autor, status, data, botão expandir
                         card.innerHTML = `
                             <h4>${m.titulo}</h4>
-                            <p>${m.descricao.replace(/\n/g,"<br>")}</p>
-                            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
+                            <div style=\"display:flex;justify-content:space-between;align-items:center;margin-top:8px;\">
                                 <small>Enviado por: <b>${m.autor}</b></small>
-                                <span style="font-size:13px;opacity:.8;">${m.data}</span>
+                                <span style=\"font-size:13px;opacity:.8;\">${m.data}</span>
                             </div>
-                            <div style="display:flex;gap:8px;margin-top:8px;">
-                                <span class="badge" style="background:${m.status==="Enviada"?"#2563eb":m.status==="Em Análise"?"#f59e0b":"#16a34a"};">${m.status}</span>
-                                ${m.status!=="Implementada" ? `<button class="btnSalvar" data-status="Em Análise">🔍 Em Análise</button>` : ""}
-                                ${m.status!=="Implementada" ? `<button class="btnSuccess" data-status="Implementada">✅ Implementar</button>` : ""}
+                            <div style=\"display:flex;gap:8px;margin-top:8px;\">
+                                <span class=\"badge\" style=\"background:${m.status==="Enviada"?"#2563eb":m.status==="Em Análise"?"#f59e0b":m.status==="Implementada"?"#16a34a":"#888"};\">${m.status}</span>
+                                ${m.status!=="Implementada" ? `<button class=\"btnSalvar\" data-status=\"Em Análise\">🔍 Em Análise</button>` : ""}
+                                ${m.status!=="Implementada" ? `<button class=\"btnSuccess\" data-status=\"Implementada\">✅ Implementar</button>` : ""}
+                                <button class=\"btnGhost\" data-expand>🔎 Ler mais</button>
+                                ${m.status!=="Rejeitada" ? `<button class=\"btnDanger\" data-status=\"Rejeitada\">🚫 Rejeitar</button>` : ""}
                             </div>
+                            <div class=\"descricaoCompleta\" style=\"display:none;margin-top:8px;\">${m.descricao.replace(/\n/g,"<br>")}</div>
                         `;
+                        // Expandir/ler mais
+                        card.querySelector("[data-expand]").onclick = function() {
+                            const desc = card.querySelector(".descricaoCompleta");
+                            desc.style.display = desc.style.display === "none" ? "block" : "none";
+                            this.textContent = desc.style.display === "none" ? "🔎 Ler mais" : "🔽 Ocultar";
+                        };
+                        // Botões de status
                         card.querySelectorAll("button[data-status]").forEach(btn => {
                             btn.onclick = async () => {
                                 const res = await fetch("/api/melhorias/status", {
@@ -132,6 +147,31 @@
                         });
                         lista.appendChild(card);
                     });
+                    // Card de melhorias rejeitadas
+                    if (melhoriasRejeitadas.length) {
+                        const cardRej = document.createElement("div");
+                        cardRej.className = "ticket";
+                        cardRej.style.border = "2px solid #dc2626";
+                        cardRej.style.background = "#fff0f0";
+                        cardRej.innerHTML = `<h4 style=\"color:#dc2626\">🚫 Melhorias Rejeitadas</h4>`;
+                        melhoriasRejeitadas.slice().reverse().forEach(m => {
+                            const item = document.createElement("div");
+                            item.style.margin = "12px 0";
+                            item.innerHTML = `
+                                <b>${m.titulo}</b> <span style=\"font-size:13px;opacity:.8;\">${m.data}</span><br>
+                                <small>Enviado por: <b>${m.autor}</b></small>
+                                <button class=\"btnGhost\" data-expand>🔎 Ler mais</button>
+                                <div class=\"descricaoCompleta\" style=\"display:none;margin-top:8px;\">${m.descricao.replace(/\n/g,"<br>")}</div>
+                            `;
+                            item.querySelector("[data-expand]").onclick = function() {
+                                const desc = item.querySelector(".descricaoCompleta");
+                                desc.style.display = desc.style.display === "none" ? "block" : "none";
+                                this.textContent = desc.style.display === "none" ? "🔎 Ler mais" : "🔽 Ocultar";
+                            };
+                            cardRej.appendChild(item);
+                        });
+                        lista.appendChild(cardRej);
+                    }
                 } catch (err) {
                     lista.innerHTML = "<p>Erro ao conectar.</p>";
                 }
