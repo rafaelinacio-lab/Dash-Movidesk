@@ -8,6 +8,7 @@
 </head>
 <body>
 <div class="container">
+    <button id="btnMelhoria" class="btnPrimary" style="position:absolute;top:24px;right:24px;z-index:10;">💡 Sugerir Melhoria</button>
     <header>
         <h1 class="brandTitle">
             <img src="/logo-viasoft.png" alt="Viasoft" class="headerLogo" />
@@ -121,11 +122,57 @@
     </div>
 </div>
 
+<!-- Modal Melhoria -->
+<div id="modalMelhoria" class="modalOverlay" aria-hidden="true">
+    <div class="modalBox" role="dialog" aria-modal="true">
+        <h3>💡 Sugerir Melhoria</h3>
+        <form id="formMelhoria" style="display:flex;flex-direction:column;gap:10px;">
+            <input type="text" id="melhoriaTitulo" placeholder="Título da melhoria" required />
+            <textarea id="melhoriaDescricao" placeholder="Descreva a sugestão" required rows="4"></textarea>
+            <input type="text" id="melhoriaAutor" placeholder="Seu nome ou usuário" required />
+            <div style="display:flex;gap:10px;justify-content:flex-end;">
+                <button type="submit" class="btnSalvar">Enviar</button>
+                <button type="button" id="fecharMelhoria" class="btnGray">Cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>
 <!-- Selo fixo -->
 <div class="appFooter">Desenvolvido para Viasoft © 2025</div>
 
 <script>
     (() => {
+        // Modal Melhoria
+        const btnMelhoria = document.getElementById("btnMelhoria");
+        const modalMelhoria = document.getElementById("modalMelhoria");
+        const formMelhoria = document.getElementById("formMelhoria");
+        const fecharMelhoria = document.getElementById("fecharMelhoria");
+        btnMelhoria.onclick = () => {
+            modalMelhoria.classList.add("show");
+            modalMelhoria.setAttribute("aria-hidden","false");
+        };
+        fecharMelhoria.onclick = () => {
+            modalMelhoria.classList.remove("show");
+            modalMelhoria.setAttribute("aria-hidden","true");
+        };
+        formMelhoria.onsubmit = async (e) => {
+            e.preventDefault();
+            const titulo = document.getElementById("melhoriaTitulo").value;
+            const descricao = document.getElementById("melhoriaDescricao").value;
+            const autor = document.getElementById("melhoriaAutor").value;
+            const res = await fetch("/api/melhorias/sugerir", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ titulo, descricao, autor })
+            });
+            if (res.ok) {
+                alert("✅ Melhoria enviada!");
+                formMelhoria.reset();
+                fecharMelhoria.click();
+            } else {
+                alert("❌ Erro ao enviar melhoria");
+            }
+        };
         /* ---------- Paletas ---------- */
         const urgencyColors = {
             "Crítica":"#ef4444","Alta":"#f97316","Média":"#3b82f6","Baixa":"#6b7280","Não definida":"#9ca3af"
@@ -626,6 +673,17 @@
             .then(user => {
                 if (user.role === "admin") {
                     document.getElementById("adminBtn").style.display = "flex";
+                    // Adiciona botão Relatórios ao lado do Admin
+                    if (!document.getElementById("relatoriosBtn")) {
+                        const container = document.querySelector(".acoes");
+                        const adminBtn = document.getElementById("adminBtn");
+                        const link = document.createElement("a");
+                        link.href = "/relatorios.html";
+                        link.id = "relatoriosBtn";
+                        link.className = "btnGhost sm";
+                        link.textContent = "📊 Relatórios";
+                        container.insertBefore(link, adminBtn.nextSibling);
+                    }
                 }
             })
             .catch(err => console.error("Erro ao verificar role:", err));
@@ -638,13 +696,23 @@
             const user = await resp.json();
             if (user.role === "admin") {
                 const container = document.querySelector(".acoes");
-                if (!document.getElementById("adminBtn")) {
-                    const link = document.createElement("a");
-                    link.href = "/admin.html";
-                    link.id = "adminBtn";
-                    link.className = "btnGhost sm";
-                    link.textContent = "⚙️ Admin";
-                    container.insertBefore(link, document.getElementById("logoutBtn"));
+                let adminBtn = document.getElementById("adminBtn");
+                if (!adminBtn) {
+                    adminBtn = document.createElement("a");
+                    adminBtn.href = "/admin.html";
+                    adminBtn.id = "adminBtn";
+                    adminBtn.className = "btnGhost sm";
+                    adminBtn.textContent = "⚙️ Admin";
+                    container.insertBefore(adminBtn, document.getElementById("logoutBtn"));
+                }
+                // Adiciona botão Relatórios ao lado do Admin
+                if (!document.getElementById("relatoriosBtn")) {
+                    const relBtn = document.createElement("a");
+                    relBtn.href = "/relatorios.html";
+                    relBtn.id = "relatoriosBtn";
+                    relBtn.className = "btnGhost sm";
+                    relBtn.textContent = "📊 Relatórios";
+                    container.insertBefore(relBtn, adminBtn.nextSibling);
                 }
             }
         } catch (err) {

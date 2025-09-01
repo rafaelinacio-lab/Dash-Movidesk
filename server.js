@@ -1,4 +1,3 @@
-
 import express from "express";
 import axios from "axios";
 import dotenv from "dotenv";
@@ -8,6 +7,7 @@ import mysql from "mysql2/promise";
 import path from "path";
 import { fileURLToPath } from "url";
 import dns from "node:dns";
+import fs from "fs/promises";
 
 dotenv.config();
 
@@ -36,6 +36,7 @@ app.use(express.urlencoded({ extended: true }));
 /* ------------------ Paths ------------------ */
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const MELHORIAS_PATH = path.join(__dirname, "melhorias.json");
 
 /* ----------------- Login ------------------- */
 app.get("/", (req, res) => {
@@ -364,6 +365,8 @@ app.get("/api/tickets", async (req, res) => {
         return res.json(makeMockPayload());
     }
 });
+
+// Rotas para melhorias
 
 /* static files */
 app.use(express.static("public"));

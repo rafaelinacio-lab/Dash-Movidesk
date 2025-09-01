@@ -20,45 +20,125 @@
         </header>
 
         <!-- Cadastro de Usuário -->
+        <!-- Painel de Melhorias -->
         <section class="adminSection">
-            <h2>➕ Cadastrar Usuário</h2>
-            <form id="formNovoUsuario" class="adminForm">
-                <input type="text" id="novoUser" placeholder="Usuário" required />
-                <input type="password" id="novoPass" placeholder="Senha" required />
-                <select id="novoTeam" required>
-                    <option value="">Selecione a equipe...</option>
-                    <!-- ⚡ Lista de equipes gerada pelo JS -->
-                </select>
-                <select id="novoRole" required>
-                    <option value="user">Usuário</option>
-                    <option value="admin">Admin</option>
-                </select>
-                <button type="submit" class="btnSalvar">✅ Criar</button>
-            </form>
+            <h2>💡 Controle de Melhorias</h2>
+            <div style="display:flex;gap:18px;margin-bottom:18px;">
+                <div class="cardWidget azul"><div class="cardInfo"><h3>Enviadas</h3><p id="melhoriasEnviadas">0</p></div></div>
+                <div class="cardWidget laranja"><div class="cardInfo"><h3>Em Análise</h3><p id="melhoriasAnalise">0</p></div></div>
+                <div class="cardWidget verde"><div class="cardInfo"><h3>Implementadas</h3><p id="melhoriasImpl">0</p></div></div>
+            </div>
+            <div class="adminSection" style="padding:0;box-shadow:none;">
+                <h3 style="margin:10px 0 8px 8px;font-size:16px;font-weight:600;">📝 Lista de Sugestões</h3>
+                <div id="listaMelhorias"></div>
+            </div>
         </section>
 
-        <!-- Lista de Usuários -->
+        <!-- Cadastro de Usuário com cards -->
+        <section class="adminSection">
+            <h2>➕ Cadastrar Usuário</h2>
+            <div style="display:flex;gap:18px;margin-bottom:18px;">
+                <div class="cardWidget verde">
+                    <div class="cardInfo">
+                        <h3>Novo Usuário</h3>
+                        <form id="formNovoUsuario" class="adminForm" style="margin:0;">
+                            <input type="text" id="novoUser" placeholder="Usuário" required />
+                            <input type="password" id="novoPass" placeholder="Senha" required />
+                            <select id="novoTeam" required>
+                                <option value="">Selecione a equipe...</option>
+                                <!-- ⚡ Lista de equipes gerada pelo JS -->
+                            </select>
+                            <select id="novoRole" required>
+                                <option value="user">Usuário</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                            <button type="submit" class="btnSalvar">✅ Criar</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Usuários do Sistema com cards -->
         <section class="adminSection">
             <h2>👤 Usuários do Sistema</h2>
-            <table class="adminTable">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Usuário</th>
-                        <th>Equipe</th>
-                        <th>Role</th>
-                        <th>Ações</th>
-                    </tr>
-                </thead>
-                <tbody id="usersTableBody"></tbody>
-            </table>
+            <div style="display:flex;gap:18px;margin-bottom:18px;">
+                <div class="cardWidget azul" style="flex:2;">
+                    <div class="cardInfo">
+                        <h3>Lista de Usuários</h3>
+                        <table class="adminTable" style="margin-top:10px;">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Usuário</th>
+                                    <th>Equipe</th>
+                                    <th>Role</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </section>
     </div>
 
     <div class="appFooter">Desenvolvido para Viasoft © 2025</div>
 
     <script>
-        (async function () {
+    (async function () {
+            // Painel de melhorias
+            async function carregarMelhorias() {
+                const lista = document.getElementById("listaMelhorias");
+                lista.innerHTML = "<p>Carregando...</p>";
+                try {
+                    const resp = await fetch("/api/melhorias");
+                    if (!resp.ok) { lista.innerHTML = "<p>Erro ao carregar melhorias</p>"; return; }
+                    const melhorias = await resp.json();
+                    // Contadores
+                    document.getElementById("melhoriasEnviadas").textContent = melhorias.filter(m=>m.status==="Enviada").length;
+                    document.getElementById("melhoriasAnalise").textContent = melhorias.filter(m=>m.status==="Em Análise").length;
+                    document.getElementById("melhoriasImpl").textContent = melhorias.filter(m=>m.status==="Implementada").length;
+                    // Cards
+                    lista.innerHTML = "";
+                    melhorias.slice().reverse().forEach(m => {
+                        const card = document.createElement("div");
+                        card.className = "ticket";
+                        card.style.minHeight = "unset";
+                        card.innerHTML = `
+                            <h4>${m.titulo}</h4>
+                            <p>${m.descricao.replace(/\n/g,"<br>")}</p>
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
+                                <small>Enviado por: <b>${m.autor}</b></small>
+                                <span style="font-size:13px;opacity:.8;">${m.data}</span>
+                            </div>
+                            <div style="display:flex;gap:8px;margin-top:8px;">
+                                <span class="badge" style="background:${m.status==="Enviada"?"#2563eb":m.status==="Em Análise"?"#f59e0b":"#16a34a"};">${m.status}</span>
+                                ${m.status!=="Implementada" ? `<button class="btnSalvar" data-status="Em Análise">🔍 Em Análise</button>` : ""}
+                                ${m.status!=="Implementada" ? `<button class="btnSuccess" data-status="Implementada">✅ Implementar</button>` : ""}
+                            </div>
+                        `;
+                        card.querySelectorAll("button[data-status]").forEach(btn => {
+                            btn.onclick = async () => {
+                                const res = await fetch("/api/melhorias/status", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ id: m.id, status: btn.getAttribute("data-status") })
+                                });
+                                if (res.ok) carregarMelhorias();
+                                else alert("Erro ao atualizar melhoria");
+                            };
+                        });
+                        lista.appendChild(card);
+                    });
+                } catch (err) {
+                    lista.innerHTML = "<p>Erro ao conectar.</p>";
+                }
+            }
+
+            // Chama melhorias ao carregar
+            carregarMelhorias();
             const tbody = document.getElementById("usersTableBody");
             const formNovo = document.getElementById("formNovoUsuario");
             const selectTeam = document.getElementById("novoTeam");
@@ -191,6 +271,25 @@
                 document.getElementById("toggleTheme").textContent =
                     document.body.classList.contains("dark") ? "☀️ Tema Claro" : "🌙 Tema Escuro";
             });
+
+            // Adiciona botão Relatórios ao lado do Admin se admin
+            fetch("/api/me")
+                .then(r => r.json())
+                .then(user => {
+                    if (user.role === "admin") {
+                        if (!document.getElementById("relatoriosBtn")) {
+                            const container = document.querySelector(".acoes");
+                            const adminBtn = document.getElementById("adminBtn");
+                            const link = document.createElement("a");
+                            link.href = "/relatorios.html";
+                            link.id = "relatoriosBtn";
+                            link.className = "btnGhost sm";
+                            link.textContent = "📊 Relatórios";
+                            container.insertBefore(link, adminBtn.nextSibling);
+                        }
+                    }
+                })
+                .catch(err => console.error("Erro ao verificar role:", err));
 
             carregarUsuarios();
         })();
