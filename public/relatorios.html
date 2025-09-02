@@ -7,6 +7,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
       #teamSelect { max-width: 520px; }
+      @media print {
+        header, .adminForm, .appFooter, .acoes { display:none !important; }
+        #printArea { display:block !important; }
+      }
+      #printArea { display:none; }
     </style>
     <script>
       function toggleTheme(){ document.body.classList.toggle('dark'); }
@@ -27,7 +32,7 @@
         </header>
         <section class="adminSection">
             <h2>📊 Relatórios</h2>
-            <div class="adminForm" style="margin:8px 0 16px; align-items: flex-start; gap:12px;">
+            <div class="adminForm" style="margin:8px 0 12px; align-items: flex-start; gap:12px;">
                 <div id="teamPickerAdmin" style="display:none;">
                     <label style="display:block; font-weight:600; margin-bottom:6px;">Equipes</label>
                     <select id="teamSelect" multiple size="6" style="min-width:360px"></select>
@@ -62,7 +67,13 @@
                     <button id="btnGerar" class="btnSalvar">Gerar Relatório</button>
                 </div>
             </div>
+            <div style="display:flex; gap:10px; align-items:center; margin-bottom:8px;">
+                <button id="btnCsv" class="btnGray">Exportar CSV</button>
+                <button id="btnXlsx" class="btnGray">Exportar Excel</button>
+                <button id="btnPdf" class="btnGray">Exportar PDF</button>
+            </div>
             <div id="relatorioConteudo"></div>
+            <div id="printArea"></div>
         </section>
     </div>
     <div class="appFooter">Desenvolvido para Viasoft © 2025</div>
@@ -72,6 +83,7 @@
         const elTeams = document.getElementById('teamSelect');
         const elBtn = document.getElementById('btnGerar');
         const elOut = document.getElementById('relatorioConteudo');
+        const elPrint = document.getElementById('printArea');
         const boxAdmin = document.getElementById('teamPickerAdmin');
         const boxReadOnly = document.getElementById('teamReadOnlyBox');
         const elTeamRO = document.getElementById('teamReadOnly');
@@ -84,6 +96,9 @@
           agentes: document.getElementById('optAgentes'),
         };
         const elDate = { start: document.getElementById('dateStart'), end: document.getElementById('dateEnd') };
+
+        let lastReport = null; // guarda último payload renderizado
+        let lastFlags = null;
 
         const fmt = (n)=> new Intl.NumberFormat('pt-BR').format(n||0);
 
@@ -153,6 +168,7 @@
         function render(res){
             if(!res || !res.teams || !res.teams.length){ elOut.innerHTML = '<p>Nenhum dado.</p>'; return; }
             const flags = getFlags();
+            lastReport = res; lastFlags = flags;
             const parts = [];
             // Tabela de totais por equipe
             if (flags.totais){
@@ -201,8 +217,10 @@
               });
             }
 
-            elOut.innerHTML = parts.join('');
-        }
+                const html = parts.join('');
+                elOut.innerHTML = html;
+                elPrint.innerHTML = html;
+            }
 
         async function gerar(){
             const teams = getSelecionadas();
@@ -274,7 +292,88 @@
         }
 
         elBtn.addEventListener('click', gerar);
+        document.getElementById('btnCsv').addEventListener('click', ()=> exportCSV());
+        document.getElementById('btnXlsx').addEventListener('click', ()=> exportXLSX());
+        document.getElementById('btnPdf').addEventListener('click', ()=> { if(!lastReport){ alert('Gere um relatório primeiro.'); return; } window.print(); });
         initTeams();
+
+        function rowsFromReport(){
+            if(!lastReport) return [];
+            const f = lastFlags || getFlags();
+            const rows = [];
+            // Header for totals by team
+            if (f.totais){
+              const header = ['Equipe'];
+              if(f.open) header.push('Abertos');
+              if(f.closed) header.push('Fechados');
+              if(f.resolved) header.push('Resolvidos');
+              if(f.canceled) header.push('Cancelados');
+              header.push('Total');
+              rows.push(header);
+              lastReport.teams.forEach(t=>{
+                  const a=t.totals; const row=[t.team];
+                  if(f.open) row.push(a.open);
+                  if(f.closed) row.push(a.closed);
+                  if(f.resolved) row.push(a.resolved);
+                  if(f.canceled) row.push(a.canceled);
+                  row.push(a.total);
+                  rows.push(row);
+              });
+              rows.push([]);
+            }
+            if (f.agentes){
+              lastReport.teams.forEach(t=>{
+                  rows.push([`Equipe: ${t.team}`]);
+                  const header = ['Agente'];
+                  if(f.open) header.push('Abertos');
+                  if(f.closed) header.push('Fechados');
+                  if(f.resolved) header.push('Resolvidos');
+                  if(f.canceled) header.push('Cancelados');
+                  header.push('Total');
+                  rows.push(header);
+                  const agents = Object.keys(t.perAgent).sort((a,b)=>a.localeCompare(b,'pt-BR'));
+                  agents.forEach(name=>{
+                      const a=t.perAgent[name]; const row=[name];
+                      if(f.open) row.push(a.open);
+                      if(f.closed) row.push(a.closed);
+                      if(f.resolved) row.push(a.resolved);
+                      if(f.canceled) row.push(a.canceled);
+                      row.push(a.total);
+                      rows.push(row);
+                  });
+                  rows.push([]);
+              });
+            }
+            return rows;
+        }
+
+        function exportCSV(){
+            const rows = rowsFromReport();
+            if(!rows.length){ alert('Gere um relatório primeiro.'); return; }
+            const csv = rows.map(r=> r.map(v=>{
+                if(v===undefined||v===null) return '';
+                const s = String(v).replace(/"/g,'""');
+                return /[",;\n]/.test(s) ? '"'+s+'"' : s;
+            }).join(';')).join('\n');
+            const blob = new Blob(["\ufeff"+csv], {type:'text/csv;charset=utf-8;'});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'relatorio.csv'; a.click(); URL.revokeObjectURL(a.href);
+        }
+
+        function exportXLSX(){
+            const rows = rowsFromReport();
+            if(!rows.length){ alert('Gere um relatório primeiro.'); return; }
+            if (window.XLSX) {
+                const ws = XLSX.utils.aoa_to_sheet(rows);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'Relatorio');
+                XLSX.writeFile(wb, 'relatorio.xlsx');
+            } else {
+                // fallback para CSV se biblioteca não estiver disponível
+                exportCSV();
+            }
+        }
     })();
     </script>
 </body>

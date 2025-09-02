@@ -137,6 +137,17 @@
         </form>
     </div>
 </div>
+
+<!-- Modal Minhas Melhorias -->
+<div id="modalMinhasMelhorias" class="modalOverlay" aria-hidden="true">
+    <div class="modalBox" role="dialog" aria-modal="true">
+        <h3>📋 Minhas Melhorias</h3>
+        <div id="minhasMelhoriasConteudo">Carregando...</div>
+        <div class="modalActions" style="margin-top:10px; display:flex; justify-content:flex-end; gap:8px;">
+            <button id="fecharMinhasMelhorias" class="btnGray">Fechar</button>
+        </div>
+    </div>
+</div>
 <!-- Selo fixo -->
 <div class="appFooter">Desenvolvido para Viasoft © 2025</div>
 
@@ -190,6 +201,62 @@
                 alert("❌ Erro ao enviar melhoria");
             }
         };
+
+        // Garante o botão 'Minhas Melhorias' no header
+        (function(){
+            const actions = document.querySelector('.acoes');
+            if (actions && !document.getElementById('btnMinhasMelhorias')) {
+                const btn = document.createElement('button');
+                btn.id = 'btnMinhasMelhorias';
+                btn.className = 'btnGhost sm';
+                btn.title = 'Minhas melhorias';
+                btn.textContent = '📋 Minhas Melhorias';
+                const logout = document.getElementById('logoutBtn');
+                if (logout) actions.insertBefore(btn, logout); else actions.appendChild(btn);
+            }
+        })();
+
+        // Minhas melhorias: botão e modal
+        const btnMinhas = document.getElementById('btnMinhasMelhorias');
+        const modalMinhas = document.getElementById('modalMinhasMelhorias');
+        const fecharMinhas = document.getElementById('fecharMinhasMelhorias');
+        const minhasConteudo = document.getElementById('minhasMelhoriasConteudo');
+        async function getMe(){ try{ const r=await fetch('/api/me'); if(!r.ok) return null; return await r.json(); } catch { return null; } }
+        function openMinhas(){ modalMinhas.classList.add('show'); modalMinhas.setAttribute('aria-hidden','false'); }
+        function closeMinhas(){ modalMinhas.classList.remove('show'); modalMinhas.setAttribute('aria-hidden','true'); }
+        if (btnMinhas) {
+            btnMinhas.addEventListener('click', async ()=>{
+                openMinhas();
+                minhasConteudo.textContent = 'Carregando...';
+                const me = await getMe();
+                if(!me){ minhasConteudo.textContent='Não autenticado.'; return; }
+                try{
+                    const r = await fetch('/api/melhorias');
+                    if(!r.ok){ minhasConteudo.textContent='Erro ao carregar melhorias.'; return; }
+                    const lista = await r.json();
+                    const minhas = (lista||[]).filter(m => (m.autor||'').toLowerCase() === (me.username||'').toLowerCase());
+                    if(!minhas.length){ minhasConteudo.textContent='Você ainda não enviou melhorias.'; return; }
+                    const wrap = document.createElement('div');
+                    minhas.forEach(m=>{
+                        const item = document.createElement('div');
+                        item.className='ticket';
+                        const status = m.status || 'Enviada';
+                        const color = status==='Implementada'?'#16a34a':(status.includes('An')||status.includes('an'))?'#f59e0b':status==='Rejeitada'?'#dc2626':'#2563eb';
+                        item.innerHTML = `<h4>${m.titulo}</h4>
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+                              <small>Enviado em: ${m.data||'-'}</small>
+                              <span class=\"badge\" style=\"background:${color}\">${status}</span>
+                            </div>
+                            <div class=\"descricaoCompleta\" style=\"margin-top:8px;\">${(m.descricao||'').replace(/\\n/g,'<br>')}</div>`;
+                        wrap.appendChild(item);
+                    });
+                    minhasConteudo.innerHTML=''; minhasConteudo.appendChild(wrap);
+                }catch{
+                    minhasConteudo.textContent='Erro ao conectar.';
+                }
+            });
+        }
+        if (fecharMinhas) fecharMinhas.addEventListener('click', closeMinhas);
         /* ---------- Paletas ---------- */
         const urgencyColors = {
             "Crítica":"#ef4444","Alta":"#f97316","Média":"#3b82f6","Baixa":"#6b7280","Não definida":"#9ca3af"
@@ -742,3 +809,6 @@
 </script>
 </body>
 </html>
+
+
+
