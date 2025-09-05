@@ -1,121 +1,113 @@
+// create-user-one.js (ESM)
+// Uso:
+//   node create-user-one.js <usuario> <senha> [role=user|admin|inactive] "<equipe>"
+// Exemplos (PowerShell):
+//   node create-user-one.js rafael "Senha#2025" admin "VIASOFT - Sistemas Internos"
+//   node create-user-one.js ana "123456" "Agrotitan - Suporte"   // role padrão = user
+
 import dotenv from "dotenv";
 import mysql from "mysql2/promise";
 import bcrypt from "bcryptjs";
-import readline from "node:readline/promises";
-import { stdin as input, stdout as output } from "node:process";
-import crypto from "node:crypto";
 
 dotenv.config();
 
-const ALLOWED_ROLES = new Set(["user", "admin", "inactive"]);
-
-async function createUser(username, password, role = "user", team = null) {
-    try {
-        // Conexão com MariaDB
-        const db = await mysql.createConnection({
-            host: process.env.DB_HOST || "192.168.91.168",
-            port: process.env.DB_PORT || 5432,
-            user: process.env.DB_USER || "root",
-            password: process.env.DB_PASS || "V!@soft2025#@2306",
-            database: process.env.DB_NAME || "si_panel",
-        });
-
-        // Gera hash da senha
-        const hash = await bcrypt.hash(password, 10);
-
-        // Insere no banco
-        const [result] = await db.query(
-            "INSERT INTO users (username, password_hash, role, team) VALUES (?, ?, ?, ?)",
-            [username, hash, role, team]
-        );
-
-        console.log(`✅ Usuário criado com sucesso! ID: ${result.insertId}`);
-        console.log(`👤 Usuário: ${username}`);
-        console.log(`🔑 Role: ${role}`);
-        console.log(`👥 Equipe: ${team || "Nenhuma atribuída"}`);
-
-        await db.end();
-    } catch (err) {
-        console.error("❌ Erro ao criar usuário:", err.message);
-    }
+function usage() {
+  console.log('Uso: node create-user-one.js <usuario> <senha> [role=user|admin|inactive] "<equipe>"');
 }
 
-// Gera senha aleatória forte
-function generatePassword(length = 12) {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()-_=+";
-    const bytes = crypto.randomBytes(length);
-    let pass = "";
-    for (let i = 0; i < length; i++) pass += chars[bytes[i] % chars.length];
-    return pass;
+const args = process.argv.slice(2);
+if (args.length < 3) {
+  usage();
+  process.exit(1);
 }
 
-async function main() {
-    // Modo interativo quando executado sem todos os argumentos
-    const args = process.argv.slice(2);
+let [username, password, third, fourth] = args;
 
-    if (args.length === 0) {
-        const rl = readline.createInterface({ input, output });
-        try {
-            // Usuário
-            let username = (await rl.question("Usuário: ")).trim();
-            while (!username) username = (await rl.question("Usuário (obrigatório): ")).trim();
+// Detecta se o 3º argumento é role ou já é a equipe
+let role = "user";
+let team = null;
 
-            // Equipe
-            let team = (await rl.question("Equipe: ")).trim();
-            while (!team) team = (await rl.question("Equipe (obrigatória): ")).trim();
-
-            // Role
-            let role = (await rl.question("Role [user/admin/inactive] (padrão: user): ")).trim().toLowerCase();
-            if (!role) role = "user";
-            while (!ALLOWED_ROLES.has(role)) {
-                role = (await rl.question("Role inválida. Use user/admin/inactive: ")).trim().toLowerCase();
-            }
-
-            // Senha sugerida + opção de sobrescrever
-            const suggested = generatePassword(12);
-            const custom = (await rl.question(`Senha sugerida (${suggested}) — pressione Enter para aceitar ou digite outra: `)).trim();
-            const password = custom || suggested;
-
-            // Confirmação
-            console.log("\nResumo:");
-            console.log(`  Usuário: ${username}`);
-            console.log(`  Equipe:  ${team}`);
-            console.log(`  Role:    ${role}`);
-            console.log(`  Senha:   ${password}`);
-            const confirm = (await rl.question("Confirmar criação? [s/N]: ")).trim().toLowerCase();
-            if (confirm !== "s" && confirm !== "sim" && confirm !== "y" && confirm !== "yes") {
-                console.log("Cancelado.");
-                await rl.close();
-                return;
-            }
-
-            await createUser(username, password, role, team);
-            console.log("\nAnote a senha acima.\n");
-            await rl.close();
-        } catch (e) {
-            console.error("Erro no modo interativo:", e.message);
-        }
-        return;
-    }
-
-    // Modo não interativo (compatível com args antigos)
-    // Uso: node create-user-one.js <usuario> <senha> [role=user|admin|inactive] <equipe...>
-    const [u, p, ...rest] = args;
-    let roleArg = "user";
-    let t = null;
-    if (rest.length > 0) {
-        if (ALLOWED_ROLES.has(rest[0])) {
-            roleArg = rest[0];
-            t = rest.slice(1).length ? rest.slice(1).join(" ") : null;
-        } else {
-            t = rest.join(" ");
-        }
-    }
-    if (!u || !p || !t) {
-        console.error("Uso: node create-user-one.js <usuario> <senha> [role=user|admin|inactive] <equipe...>");
-        process.exit(1);
-    }
-    await createUser(u, p, roleArg, t);
+if (fourth !== undefined) {
+  // formato explícito: <user> <pass> <role> "<team>"
+  const m = /^role=(.+)$/i.exec(third);
+  role = (m ? m[1] : third).toLowerCase();
+  team = fourth;
+} else {
+  // formato curto: <user> <pass> "<team>"  (role = user)
+  team = third;
 }
 
-main();
+if (!["user", "admin", "inactive"].includes(role)) {
+  console.error("❌ Role inválido. Use user | admin | inactive.");
+  usage();
+  process.exit(1);
+}
+
+team = String(team || "").trim();
+if (!team) {
+  console.error("❌ Informe a equipe (entre aspas se tiver espaços).");
+  usage();
+  process.exit(1);
+}
+
+const db = await mysql.createPool({
+  host: process.env.DB_HOST || "192.168.91.168",
+  port: process.env.DB_PORT ? Number(process.env.DB_PORT) : 5432, // igual ao seu server.js
+  user: process.env.DB_USER || "root",
+  password: process.env.DB_PASS || "V!@soft2025#@2306",
+  database: process.env.DB_NAME || "si_panel",
+  connectionLimit: 5,
+});
+
+async function ensureSchema() {
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS user_teams (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      user_id INT NOT NULL,
+      team VARCHAR(255) NOT NULL,
+      UNIQUE KEY uniq_user_team (user_id, team),
+      INDEX idx_user_teams_user (user_id),
+      CONSTRAINT fk_user_teams_user FOREIGN KEY (user_id)
+        REFERENCES users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
+}
+
+(async () => {
+  try {
+    await ensureSchema();
+
+    // já existe?
+    const [exist] = await db.query("SELECT id FROM users WHERE username = ?", [username]);
+    if (exist.length) {
+      console.error("❌ Usuário já existe:", username);
+      process.exit(2);
+    }
+
+    const password_hash = await bcrypt.hash(password, 10);
+
+    // cria usuário (coluna 'team' recebe a equipe informada)
+    const [ins] = await db.query(
+      "INSERT INTO users (username, password_hash, role, team) VALUES (?, ?, ?, ?)",
+      [username, password_hash, role, team]
+    );
+    const userId = ins.insertId;
+
+    // vincula única equipe
+    await db.query("INSERT IGNORE INTO user_teams (user_id, team) VALUES (?, ?)", [userId, team]);
+
+    console.log("✅ Usuário criado com sucesso!");
+    console.log("   ID:      ", userId);
+    console.log("   Usuário: ", username);
+    console.log("   Role:    ", role);
+    console.log("   Equipe:  ", team);
+    process.exit(0);
+  } catch (err) {
+    console.error("❌ Erro:", err.message);
+    console.error("   Dica: se o erro for 'Data too long for column role', ajuste a coluna:");
+    console.error("   ALTER TABLE users MODIFY COLUMN role ENUM('user','admin','inactive') NOT NULL DEFAULT 'user';");
+    process.exit(3);
+  } finally {
+    await db.end();
+  }
+})();
