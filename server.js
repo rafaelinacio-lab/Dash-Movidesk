@@ -14,6 +14,16 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Allowed roles for users
+const ALLOWED_ROLES = new Set(["user", "admin", "inactive"]);
+// Paths liberados quando usuário precisa trocar senha
+const ALLOW_WHEN_MUST_CHANGE = new Set([
+    "/password-change",
+    "/api/change-password",
+    "/logout",
+    "/api/me",
+]);
+
 /* -------------------- DB -------------------- */
 const db = await mysql.createPool({
     host: process.env.DB_HOST || "192.168.91.168",
@@ -32,6 +42,18 @@ app.use(session({
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Middleware para forçar troca de senha quando marcado
+app.use((req, res, next) => {
+    if (!req.session || !req.session.userId) return next();
+    if (!req.session.mustChange) return next();
+    if (ALLOW_WHEN_MUST_CHANGE.has(req.path)) return next();
+    const acceptsHtml = (req.headers.accept || "").includes("text/html");
+    if (acceptsHtml && req.method === "GET") {
+        return res.redirect("/password-change");
+    }
+    return res.status(403).json({ error: "Troca de senha obrigatória" });
+});
 
 /* ------------------ Paths ------------------ */
 const __filename = fileURLToPath(import.meta.url);
@@ -63,6 +85,7 @@ app.post("/login", async (req, res) => {
         req.session.userId = user.id;
         req.session.team = user.team;
         req.session.role = user.role;
+        req.session.mustChange = !!user.must_change_password;
 
         res.json({ success: true, message: "Login realizado com sucesso" });
     } catch (err) {
@@ -73,6 +96,7 @@ app.post("/login", async (req, res) => {
 
 app.get("/dashboard", (req, res) => {
     if (!req.session.userId) return res.redirect("/");
+    if (req.session.mustChange) return res.redirect("/password-change");
     res.sendFile(path.join(__dirname, "public/index.html"));
 });
 
@@ -93,7 +117,7 @@ app.get("/api/me", async (req, res) => {
     if (!req.session.userId) return res.status(401).json({ error: "Não autenticado" });
 
     try {
-        const [rows] = await db.query("SELECT id, username, team, role FROM users WHERE id = ?", [req.session.userId]);
+        const [rows] = await db.query("SELECT id, username, team, role, must_change_password FROM users WHERE id = ?", [req.session.userId]);
         if (!rows.length) return res.status(404).json({ error: "Usuário não encontrado" });
 
         res.json(rows[0]);
@@ -105,15 +129,53 @@ app.get("/api/me", async (req, res) => {
 
 /* ---------------- Rotas Admin ---------------- */
 app.get("/admin/users", requireAdmin, async (req, res) => {
-    const [rows] = await db.query("SELECT id, username, team, role FROM users");
+    const [rows] = await db.query("SELECT id, username, team, role, must_change_password FROM users");
     res.json(rows);
+});
+
+// Página para troca de senha
+app.get("/password-change", (req, res) => {
+    if (!req.session.userId) return res.redirect("/");
+    res.sendFile(path.join(__dirname, "public/password.html"));
+});
+
+// API de troca de senha
+app.post("/api/change-password", async (req, res) => {
+    if (!req.session.userId) return res.status(401).json({ error: "Nǜo autenticado" });
+    const { currentPassword, newPassword } = req.body || {};
+    if (!newPassword || String(newPassword).length < 6) {
+        return res.status(400).json({ error: "Nova senha deve ter ao menos 6 caracteres" });
+    }
+    try {
+        const [rows] = await db.query("SELECT id, password_hash FROM users WHERE id = ?", [req.session.userId]);
+        if (!rows.length) return res.status(404).json({ error: "Usuário não encontrado" });
+        const user = rows[0];
+
+        if (!req.session.mustChange) {
+            if (!currentPassword) return res.status(400).json({ error: "Senha atual obrigatória" });
+            const ok = await bcrypt.compare(currentPassword, user.password_hash);
+            if (!ok) return res.status(401).json({ error: "Senha atual incorreta" });
+        }
+
+        const password_hash = await bcrypt.hash(newPassword, 10);
+        await db.query("UPDATE users SET password_hash = ?, must_change_password = 0 WHERE id = ?", [password_hash, req.session.userId]);
+        req.session.mustChange = false;
+        res.json({ success: true });
+    } catch (err) {
+        console.error("Erro ao trocar senha:", err);
+        res.status(500).json({ error: "Erro ao trocar senha" });
+    }
 });
 
 
 app.post("/admin/users/update", requireAdmin, async (req, res) => {
-    const { userId, team, role } = req.body;
+    const { userId, team, role, mustChangePassword } = req.body;
+    if (role && !ALLOWED_ROLES.has(role)) {
+        return res.status(400).json({ error: "Role inválida" });
+    }
     try {
-        await db.query("UPDATE users SET team = ?, role = ? WHERE id = ?", [team, role, userId]);
+        const mustChangeParam = (typeof mustChangePassword !== "undefined") ? (mustChangePassword ? 1 : 0) : null;
+        await db.query("UPDATE users SET team = ?, role = ?, must_change_password = IFNULL(?, must_change_password) WHERE id = ?", [team, role, mustChangeParam, userId]);
         res.json({ success: true });
     } catch (err) {
         console.error("❌ Erro ao atualizar usuário:", err);
@@ -135,7 +197,10 @@ app.post("/admin/users/delete", requireAdmin, async (req, res) => {
 });
 // Rota para criar usuário
 app.post("/admin/users/create", requireAdmin, async (req, res) => {
-    const { username, password, team, role } = req.body;
+    const { username, password, team, role, mustChangePassword } = req.body;
+    if (role && !ALLOWED_ROLES.has(role)) {
+        return res.status(400).json({ error: "Role inválida" });
+    }
     if (!username || !password || !team || !role) {
         return res.status(400).json({ error: "Dados obrigatórios ausentes" });
     }
@@ -147,10 +212,17 @@ app.post("/admin/users/create", requireAdmin, async (req, res) => {
         }
         // Hash da senha
         const password_hash = await bcrypt.hash(password, 10);
-        await db.query(
-            "INSERT INTO users (username, password_hash, team, role) VALUES (?, ?, ?, ?)",
-            [username, password_hash, team, role]
-        );
+        if (typeof mustChangePassword !== "undefined") {
+            await db.query(
+                "INSERT INTO users (username, password_hash, team, role, must_change_password) VALUES (?, ?, ?, ?, ?)",
+                [username, password_hash, team, role, mustChangePassword ? 1 : 0]
+            );
+        } else {
+            await db.query(
+                "INSERT INTO users (username, password_hash, team, role) VALUES (?, ?, ?, ?)",
+                [username, password_hash, team, role]
+            );
+        }
         res.json({ success: true });
     } catch (err) {
         console.error("❌ Erro ao criar usuário:", err);

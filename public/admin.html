@@ -53,6 +53,10 @@
                                 <option value="user">Usuário</option>
                                 <option value="admin">Admin</option>
                             </select>
+                            <label style="display:flex;align-items:center;gap:8px;margin:6px 0 2px 2px;">
+                                <input type="checkbox" id="novoMustChange" checked />
+                                <span>Trocar senha no primeiro login</span>
+                            </label>
                             <button type="submit" class="btnSalvar">✅ Criar</button>
                         </form>
                     </div>
@@ -74,6 +78,7 @@
                                     <th>Usuário</th>
                                     <th>Equipe</th>
                                     <th>Role</th>
+                                    <th>Troca Senha</th>
                                     <th>Ações</th>
                                 </tr>
                             </thead>
@@ -219,11 +224,12 @@
                 const password = document.getElementById("novoPass").value;
                 const team = document.getElementById("novoTeam").value;
                 const role = document.getElementById("novoRole").value;
+                const mustChangePassword = document.getElementById("novoMustChange").checked;
 
                 const res = await fetch("/admin/users/create", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ username, password, team, role })
+                    body: JSON.stringify({ username, password, team, role, mustChangePassword })
                 });
 
                 if (res.ok) {
@@ -258,6 +264,9 @@
                   </select>
                 </td>
                 <td>
+                  <input type="checkbox" data-must-change ${u.must_change_password ? "checked" : ""} />
+                </td>
+                <td>
                   <button class="btnSalvar">💾 Salvar</button>
                   <button class="btnInativar">🚫 Inativar</button>
                   <button class="btnExcluir danger">🗑 Excluir</button>
@@ -268,10 +277,11 @@
                         tr.querySelector(".btnSalvar").addEventListener("click", async () => {
                             const team = tr.querySelector("[data-team]").value;
                             const role = tr.querySelector("[data-role]").value;
+                            const mustChangePassword = tr.querySelector("[data-must-change]").checked;
                             const res = await fetch("/admin/users/update", {
                                 method: "POST",
                                 headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ userId: u.id, team, role })
+                                body: JSON.stringify({ userId: u.id, team, role, mustChangePassword })
                             });
                             alert(res.ok ? "✅ Atualizado!" : "❌ Erro ao atualizar");
                         });

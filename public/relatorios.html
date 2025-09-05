@@ -8,10 +8,11 @@
     <style>
       #teamSelect { max-width: 520px; }
       @media print {
-        header, .adminForm, .appFooter, .acoes { display:none !important; }
+        header, .adminForm, .appFooter, .acoes, hr { display:none !important; }
         #printArea { display:block !important; }
       }
       #printArea { display:none; }
+      .error { color: #ef4444; font-weight: bold; }
     </style>
     <script>
       function toggleTheme(){ document.body.classList.toggle('dark'); }
@@ -31,7 +32,7 @@
             </div>
         </header>
         <section class="adminSection">
-            <h2>📊 Relatórios</h2>
+            <h2>📊 Relatórios por Equipe</h2>
             <div class="adminForm" style="margin:8px 0 12px; align-items: flex-start; gap:12px;">
                 <div id="teamPickerAdmin" style="display:none;">
                     <label style="display:block; font-weight:600; margin-bottom:6px;">Equipes</label>
@@ -75,6 +76,22 @@
             <div id="relatorioConteudo"></div>
             <div id="printArea"></div>
         </section>
+
+        <hr style="margin: 24px 0;">
+        <section class="adminSection">
+            <h2>⏱️ Relatório de SLA por Ticket</h2>
+            <div class="adminForm" style="margin:8px 0 12px; align-items: flex-end; gap:12px;">
+                <div>
+                    <label style="display:block; font-weight:600; margin-bottom:6px;">ID do Ticket</label>
+                    <input type="number" id="ticketIdInput" style="min-width:150px" placeholder="Ex: 12345">
+                </div>
+                <div>
+                    <button id="btnGerarSla" class="btnSalvar">Consultar SLA</button>
+                </div>
+            </div>
+            <div id="slaConteudo"></div>
+        </section>
+
     </div>
     <div class="appFooter">Desenvolvido para Viasoft © 2025</div>
 
@@ -109,15 +126,30 @@
                 if (!meResp.ok) { window.location.href = '/'; return; }
                 const me = await meResp.json();
                 if (!me || !me.team) { window.location.href = '/'; return; }
-                // Mostra badge somente leitura e fixa a opção selecionada
-                boxAdmin.style.display = 'none';
-                boxReadOnly.style.display = '';
-                elTeamRO.textContent = me.team;
-                elTeams.innerHTML = '';
-                const opt = document.createElement('option');
-                opt.value = opt.textContent = me.team;
-                opt.selected = true;
-                elTeams.appendChild(opt);
+                
+                if (me.role === 'admin') {
+                    // Se for admin, carrega todas as equipes
+                    boxAdmin.style.display = '';
+                    boxReadOnly.style.display = 'none';
+                    await carregarEquipesComoAdmin();
+                    // Seleciona a equipe do próprio admin por padrão
+                    for (let opt of elTeams.options) {
+                        if (opt.value === me.team) {
+                            opt.selected = true;
+                            break;
+                        }
+                    }
+                } else {
+                    // Mostra badge somente leitura e fixa a opção selecionada para não-admins
+                    boxAdmin.style.display = 'none';
+                    boxReadOnly.style.display = '';
+                    elTeamRO.textContent = me.team;
+                    elTeams.innerHTML = '';
+                    const opt = document.createElement('option');
+                    opt.value = opt.textContent = me.team;
+                    opt.selected = true;
+                    elTeams.appendChild(opt);
+                }
             }catch(e){
                 console.error('Erro ao obter usuário', e);
                 window.location.href = '/';
@@ -226,68 +258,32 @@
             const teams = getSelecionadas();
             if(!teams.length){ alert('Selecione ao menos uma equipe'); return; }
             elOut.innerHTML = '<p>Gerando...</p>';
-            // O backend usa a equipe da sessão; não precisa enviar query
+            
             const controller = new AbortController();
             const id = setTimeout(()=>controller.abort(), 12000);
             try {
                 let url = '/api/reports';
                 const qs = new URLSearchParams();
+                qs.set('teams', teams.join(',')); // Envia as equipes para o backend
                 if (elDate.start.value) qs.set('start', elDate.start.value);
                 if (elDate.end.value) qs.set('end', elDate.end.value);
                 const qstr = qs.toString();
                 if (qstr) url += '?' + qstr;
+                
                 const r = await fetch(url, { signal: controller.signal });
                 clearTimeout(id);
                 if (!r.ok) {
-                    if (r.status === 404) {
-                        // Fallback: gera usando /api/tickets apenas para "Abertos"
-                        await gerarFallbackAbertos();
-                        return;
-                    }
                     let msg = 'Falha ao gerar relatório ('+r.status+')';
                     try { const err = await r.json(); if (err && err.error) msg += ': '+err.error; } catch {}
-                    elOut.innerHTML = '<p>'+msg+'</p>';
+                    elOut.innerHTML = `<p class="error">${msg}</p>`;
                     return;
                 }
                 const data = await r.json();
                 render(data);
             } catch (e) {
                 const aborted = e && (e.name === 'AbortError');
-                elOut.innerHTML = '<p>'+(aborted ? 'Tempo esgotado ao gerar relatório.' : 'Erro ao gerar relatório.')+'</p>';
+                elOut.innerHTML = '<p class="error">'+(aborted ? 'Tempo esgotado ao gerar relatório.' : 'Erro ao gerar relatório.')+'</p>';
                 console.error('Erro gerar relatório', e);
-            }
-        }
-
-        async function gerarFallbackAbertos(){
-            try{
-                const r = await fetch('/api/tickets');
-                if (!r.ok) { elOut.innerHTML = '<p>Falha ao gerar relatório (fallback).</p>'; return; }
-                const dados = await r.json();
-                const teamName = (document.getElementById('teamReadOnly')?.textContent || 'Equipe').trim();
-                const start = elDate.start.value ? new Date(elDate.start.value) : null;
-                const endInc = elDate.end.value ? new Date(new Date(elDate.end.value).getTime()+86400000) : null;
-                const inRange = (iso)=>{
-                    if(!start && !endInc) return true;
-                    if(!iso) return false;
-                    const d=new Date(iso); if(isNaN(d)) return false;
-                    if(start && d<start) return false;
-                    if(endInc && d>=endInc) return false;
-                    return true;
-                };
-                const tickets = (dados.tickets||[])
-                  .filter(t => !t.canceled && (t.baseStatus==='New' || t.baseStatus==='InAttendance' || t.baseStatus==='Stopped'))
-                  .filter(t => inRange(t.createdDate));
-                const perAgent = {};
-                tickets.forEach(t => {
-                    const a = t.owner || 'Não atribuído';
-                    (perAgent[a] ||= { open:0, closed:0, resolved:0, canceled:0, total:0 });
-                    perAgent[a].open++; perAgent[a].total++;
-                });
-                const data = { teams: [{ team: teamName, totals: { open: tickets.length, closed: 0, resolved: 0, canceled: 0, total: tickets.length }, perAgent }] };
-                render(data);
-            }catch(e){
-                console.error('Fallback relatório falhou', e);
-                elOut.innerHTML = '<p>Falha ao gerar relatório (404).</p>';
             }
         }
 
@@ -301,7 +297,6 @@
             if(!lastReport) return [];
             const f = lastFlags || getFlags();
             const rows = [];
-            // Header for totals by team
             if (f.totais){
               const header = ['Equipe'];
               if(f.open) header.push('Abertos');
@@ -370,10 +365,95 @@
                 XLSX.utils.book_append_sheet(wb, ws, 'Relatorio');
                 XLSX.writeFile(wb, 'relatorio.xlsx');
             } else {
-                // fallback para CSV se biblioteca não estiver disponível
                 exportCSV();
             }
         }
+    })();
+    
+    // ===== Script para Relatório de SLA =====
+    (function(){
+        const elTicketIdInput = document.getElementById('ticketIdInput');
+        const elBtnGerarSla = document.getElementById('btnGerarSla');
+        const elSlaOut = document.getElementById('slaConteudo');
+
+        function formatarMinutos(minutos) {
+            if (minutos === 0) return "0m";
+            const dias = Math.floor(minutos / (8.75 * 60)); // 8h45m = 8.75 horas
+            const minutosRestantes = minutos % (8.75 * 60);
+            const horas = Math.floor(minutosRestantes / 60);
+            const mins = Math.round(minutosRestantes % 60);
+            
+            let resultado = "";
+            if (dias > 0) resultado += `${dias}d `;
+            if (horas > 0) resultado += `${horas}h `;
+            if (mins > 0) resultado += `${mins}m`;
+            
+            return resultado.trim();
+        }
+
+        async function gerarSla() {
+            const ticketId = elTicketIdInput.value.trim();
+            if (!ticketId) {
+                alert('Por favor, informe o ID do ticket.');
+                return;
+            }
+            elSlaOut.innerHTML = '<p>Consultando dados do ticket...</p>';
+
+            try {
+                const r = await fetch(`/api/sla/${ticketId}`);
+                if (!r.ok) {
+                    let msg = `Falha ao gerar relatório de SLA (${r.status})`;
+                    try { 
+                        const err = await r.json(); 
+                        if (err && err.error) msg += ': ' + err.error; 
+                    } catch {}
+                    elSlaOut.innerHTML = `<p class="error">${msg}</p>`;
+                    return;
+                }
+                const data = await r.json();
+                renderSla(data);
+            } catch (e) {
+                elSlaOut.innerHTML = '<p class="error">Erro de rede ao consultar o SLA.</p>';
+                console.error('Erro ao gerar relatório SLA', e);
+            }
+        }
+
+        function renderSla(data) {
+            if (!data) {
+                elSlaOut.innerHTML = '<p>Nenhum dado de SLA encontrado.</p>';
+                return;
+            }
+
+            const moviUrlBase = "app.movidesk.com"; // Configure com a URL base da sua instância do Movidesk
+            const parts = [];
+            parts.push(`<div class="cardWidget azul" style="margin-bottom:14px;"><div class="cardInfo"><h3>SLA do Ticket <a href="https://${moviUrlBase}/Ticket/Edit/${data.ticketId}" target="_blank">#${data.ticketId}</a> — ${data.assunto}</h3></div></div>`);
+            parts.push('<h4>Tempo por Equipe</h4>');
+            parts.push('<table class="adminTable"><thead><tr><th>Equipe</th><th>Tempo Gasto (útil)</th></tr></thead><tbody>');
+
+            data.slaPorEquipe.forEach(item => {
+                parts.push(`<tr><td>${item.equipe}</td><td>${formatarMinutos(item.tempo)}</td></tr>`);
+            });
+
+            parts.push('</tbody></table>');
+            
+            parts.push(`<h4 style="margin-top: 16px;">SLA Total: <span class="badge" style="background: #16a34a; font-size: 16px;">${formatarMinutos(data.slaTotal)}</span></h4>`);
+            parts.push(`<p style="font-size: 12px; opacity: 0.8;">Status atual: ${data.status || 'N/A'}<br>`);
+            parts.push(`Criado em: ${new Date(data.criadoEm).toLocaleString('pt-BR')}<br>`);
+            if(data.fechadoEm){
+               parts.push(`Finalizado em: ${new Date(data.fechadoEm).toLocaleString('pt-BR')}</p>`);
+            } else {
+               parts.push(`Finalizado em: -</p>`);
+            }
+
+            elSlaOut.innerHTML = parts.join('');
+        }
+
+        elBtnGerarSla.addEventListener('click', gerarSla);
+        elTicketIdInput.addEventListener('keyup', (event) => {
+            if (event.key === 'Enter') {
+                gerarSla();
+            }
+        });
     })();
     </script>
 </body>
