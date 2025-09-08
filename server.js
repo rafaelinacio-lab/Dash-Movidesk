@@ -277,8 +277,8 @@ app.get("/api/tickets", async (req, res) => {
 
         const todayLocalISO = ymd(new Date());
 
-        // Busca apenas tickets ativos: New, InAttendance, Stopped
-        let filter = `ownerTeam eq '${userTeam}' and (baseStatus eq 'New' or baseStatus eq 'InAttendance' or baseStatus eq 'Stopped')`;
+    // Busca apenas tickets ativos: New, InAttendance, Stopped
+    let filter = `ownerTeam eq '${userTeam}' and (baseStatus eq 'New' or baseStatus eq 'InAttendance' or baseStatus eq 'Stopped')`;
 
         const url =
             `${MOVI_URL}?token=${MOVI_TOKEN}&$top=500` +
