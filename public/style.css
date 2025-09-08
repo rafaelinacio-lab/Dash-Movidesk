@@ -19,7 +19,7 @@ header h1 span { color: #2563eb; }
 @media (min-width:1536px){ .headerLogo{ height:56px; } }
 
 /* ===== Botões header ===== */
-.acoes { display: flex; gap: 10px; align-items: center; }
+.acoes { display: flex; gap: 10px; align-items: center; --icon-box: 44px; --icon-size: 22px; }
 .acoes a.btnGhost, .acoes button.btnGhost {
     border: 1px solid #d1d5db; /* melhora contraste no claro */
     background: #e5e7eb;       /* antes era #f3f4f6 (igual ao body) */
@@ -34,6 +34,66 @@ header h1 span { color: #2563eb; }
     gap: 6px;
     box-shadow: none;
     transition: background .2s, border-color .2s, color .2s;
+}
+/* Icon-only collapsed pills in header: expand on hover/focus */
+.acoes a.btnGhost.sm,
+.acoes button.btnGhost.sm {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0; /* no gap when collapsed to truly center the icon */
+    overflow: hidden;
+    white-space: nowrap;
+    width: var(--icon-box);    /* icon-only by default */
+    height: var(--icon-box);   /* perfectly round */
+    padding: 0;                /* no padding when collapsed */
+    border-radius: 50%;        /* round box */
+    justify-content: center;
+    transition: width .25s ease, padding .25s ease, border-radius .25s ease, background .2s, border-color .2s, color .2s;
+}
+.acoes a.btnGhost.sm:hover,
+.acoes a.btnGhost.sm:focus,
+.acoes a.btnGhost.sm:focus-visible,
+.acoes button.btnGhost.sm:hover,
+.acoes button.btnGhost.sm:focus,
+.acoes button.btnGhost.sm:focus-visible {
+    width: 220px;             /* reveal label */
+    padding: 0 12px;          /* breathing room for text */
+    border-radius: 9999px;    /* pill when expanded */
+    gap: 8px;                 /* add spacing between icon and label */
+    justify-content: flex-start;
+}
+
+/* Hide label until expanded */
+.acoes .btnGhost.sm .label { opacity: 0; margin-left: 0; transition: opacity .18s ease, margin-left .18s ease; }
+.acoes .btnGhost.sm .label { display:inline-block; max-width:0; width:0; overflow:hidden; visibility:hidden; }
+.acoes .btnGhost.sm .icon { font-size: var(--icon-size); line-height: 1; display:inline-flex; align-items:center; justify-content:center; }
+.acoes .btnGhost.sm:hover .label,
+.acoes .btnGhost.sm:focus .label,
+.acoes .btnGhost.sm:focus-visible .label { opacity: 1; margin-left: 6px; max-width: 200px; width:auto; visibility:visible; }
+
+/* Ensure icon always visible and centered when collapsed */
+.acoes .btnGhost.sm .icon { flex-shrink: 0; }
+
+/* Keep notification badge visible within collapsed width */
+.notifCount { 
+    position: absolute; top: 0; right: 0;
+    /* sobreposto ao círculo (um pouco para fora, mas cobrindo a borda) */
+    transform: translate(20%, -20%);
+    background: #ef4444; color: transparent; /* oculta qualquer dígito */
+    border-radius: 9999px; min-width: 10px; height: 10px; /* vira ponto */
+    padding: 0; font-size: 0; line-height: 10px;
+    display: inline-flex; align-items: center; justify-content: center;
+}
+body.dark .notifCount { box-shadow: 0 0 0 2px rgba(0,0,0,0.0); }
+
+/* Allow the notification badge to overflow outside the round button */
+.notif > .btnGhost.sm { overflow: visible; }
+.notif .notifCount { pointer-events: none; z-index: 1000; }
+
+/* Optional: bump sizes on very wide screens */
+@media (min-width: 1536px){
+  .acoes { --icon-box: 48px; --icon-size: 24px; }
 }
 /* Remove sublinhado de links do header em todos os estados */
 .acoes a.btnGhost,
@@ -579,7 +639,7 @@ body.dark .modalBox{ background:#1f2937; color:#f9fafb; }
 }
 
 /* ===== Painel de Notificações ===== */
-.notif { position: relative; }
+.notif { position: relative; z-index: 10; }
 .notifPanel {
     position: absolute; top: 120%; right: 0;
     background: #fff; border: 1px solid #d1d5db; border-radius: 8px;
