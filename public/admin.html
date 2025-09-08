@@ -18,6 +18,24 @@
                 <a href="/logout" id="logoutBtn" class="btnGhost sm danger">🚪 Sair</a>
             </div>
         </header>
+        <script>
+        // Wrap icon + label so only icon shows when collapsed (Admin page)
+        (function(){
+          const actions = document.querySelector('.acoes'); if(!actions) return;
+          function iconize(el){
+            if(!el || el.dataset.iconized) return;
+            const txt=(el.textContent||'').trim(); if(!txt) return;
+            const sp=txt.indexOf(' '); const icon= sp>-1? txt.slice(0,sp):txt; const label= sp>-1? txt.slice(sp+1):'';
+            el.innerHTML='';
+            const i=document.createElement('span'); i.className='icon'; i.setAttribute('aria-hidden','true'); i.textContent=icon; el.appendChild(i);
+            const L=document.createElement('span'); L.className='label'; L.textContent=label; el.appendChild(L);
+            el.dataset.iconized='1';
+          }
+          function scan(){ actions.querySelectorAll('a.btnGhost.sm,button.btnGhost.sm').forEach(iconize); }
+          scan();
+          new MutationObserver(scan).observe(actions,{childList:true,subtree:true,characterData:true});
+        })();
+        </script>
 
         <!-- Cadastro de Usuário -->
         <!-- Painel de Melhorias -->
@@ -356,6 +374,17 @@
                 h2.addEventListener('click', () => sec.classList.toggle('collapsed'));
             }
         });
+    })();
+    </script>
+    <script>
+    // Ajusta rótulos/ícones do header do Admin sem depender de encoding do arquivo
+    (function(){
+        const themeBtn = document.getElementById('toggleTheme');
+        if (themeBtn) { themeBtn.title = 'Tema'; if (!/\S/.test(themeBtn.textContent)) themeBtn.textContent = '🌙 Tema Escuro'; }
+        const voltar = document.querySelector('a.btnGhost.sm[href="/dashboard"]');
+        if (voltar) { voltar.title = 'Voltar'; voltar.textContent = '🔙 Voltar'; }
+        const sair = document.getElementById('logoutBtn');
+        if (sair) { sair.title = 'Sair'; sair.textContent = '🚪 Sair'; }
     })();
     </script>
 </body>

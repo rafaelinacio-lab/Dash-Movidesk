@@ -807,6 +807,35 @@
     checarAdmin();
 
 </script>
+<script>
+// Icon/label wrapping so only the icon shows when collapsed
+(function(){
+  const actions = document.querySelector('.acoes');
+  if(!actions) return;
+
+  function iconize(el){
+    if(!el || el.dataset.iconized) return;
+    const countNode = el.querySelector ? el.querySelector('#notifCount') : null;
+    let txt = (el.textContent||'').trim();
+    if(countNode){ txt = txt.replace(/\d+$/, '').trim(); }
+    if(!txt) return;
+    const sp = txt.indexOf(' ');
+    const icon = sp>-1 ? txt.slice(0,sp) : txt;
+    const label = sp>-1 ? txt.slice(sp+1) : '';
+    // rebuild
+    el.innerHTML='';
+    const i = document.createElement('span'); i.className='icon'; i.setAttribute('aria-hidden','true'); i.textContent=icon; el.appendChild(i);
+    const L = document.createElement('span'); L.className='label'; L.textContent = label; el.appendChild(L);
+    if(countNode){ el.appendChild(countNode); }
+    el.dataset.iconized='1';
+  }
+
+  function scan(){ actions.querySelectorAll('a.btnGhost.sm,button.btnGhost.sm').forEach(iconize); }
+  scan();
+  const mo = new MutationObserver(() => scan());
+  mo.observe(actions, { childList:true, subtree:true, characterData:true });
+})();
+</script>
 </body>
 </html>
 

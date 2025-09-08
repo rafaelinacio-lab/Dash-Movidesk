@@ -26,11 +26,29 @@
                 Relatórios <span>Movidesk</span>
             </h1>
             <div class="acoes">
-                <button onclick="toggleTheme()" class="btnGhost sm">Tema</button>
-                <a href="/dashboard" class="btnGhost sm">Voltar</a>
-                <a href="/logout" id="logoutBtn" class="btnGhost sm danger">Sair</a>
+                <button onclick="toggleTheme()" class="btnGhost sm" title="Tema">🌙 Tema</button>
+                <a href="/dashboard" class="btnGhost sm" title="Voltar">🔙 Voltar</a>
+                <a href="/logout" id="logoutBtn" class="btnGhost sm danger" title="Sair">🚪 Sair</a>
             </div>
         </header>
+        <script>
+        // Wrap icon + label so only icon shows when collapsed
+        (function(){
+          const actions = document.querySelector('.acoes'); if(!actions) return;
+          function iconize(el){
+            if(!el || el.dataset.iconized) return;
+            const txt=(el.textContent||'').trim(); if(!txt) return;
+            const sp=txt.indexOf(' '); const icon= sp>-1? txt.slice(0,sp):txt; const label= sp>-1? txt.slice(sp+1):'';
+            el.innerHTML='';
+            const i=document.createElement('span'); i.className='icon'; i.setAttribute('aria-hidden','true'); i.textContent=icon; el.appendChild(i);
+            const L=document.createElement('span'); L.className='label'; L.textContent=label; el.appendChild(L);
+            el.dataset.iconized='1';
+          }
+          function scan(){ actions.querySelectorAll('a.btnGhost.sm,button.btnGhost.sm').forEach(iconize); }
+          scan();
+          new MutationObserver(scan).observe(actions,{childList:true,subtree:true,characterData:true});
+        })();
+        </script>
         <section class="adminSection">
             <h2>📊 Relatórios por Equipe</h2>
             <div class="adminForm" style="margin:8px 0 12px; align-items: flex-start; gap:12px;">
