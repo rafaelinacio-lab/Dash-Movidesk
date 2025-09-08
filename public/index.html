@@ -674,6 +674,26 @@
             // Total do mês (vem do backend)
             document.getElementById("totalTickets").innerText = dados.counts?.MonthOpenedAll ?? 0;
 
+            // Reforço: se modo individual estiver ativo, refiltra por owner e recalcula métricas
+            try{
+                const view = localStorage.getItem('kanban.view') || 'geral';
+                const owner = localStorage.getItem('kanban.owner') || '';
+                if (view === 'individual' && owner){
+                    const norm = (s)=> (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+                    const filtered = (dados.tickets||[]).filter(t => norm(t.owner||'') === norm(owner));
+                    const hoje = new Date(); const mesAtual = hoje.getMonth(); const anoAtual = hoje.getFullYear();
+                    const ticketsMes = filtered.filter(t=>{ if(!t.createdDate) return false; const d=new Date(t.createdDate); return d.getMonth()===mesAtual && d.getFullYear()===anoAtual; }).length;
+                    const countsPerUrgency = {}; const countsPerOwner = {};
+                    filtered.forEach(t=>{ const u=t.urgency||'N\u00e3o definida'; countsPerUrgency[u]=(countsPerUrgency[u]||0)+1; countsPerOwner[t.owner]=(countsPerOwner[t.owner]||0)+1; });
+                    dados.tickets = filtered;
+                    if (!dados.counts) dados.counts = {};
+                    dados.counts.MonthOpenedAll = ticketsMes;
+                    dados.countsPerUrgency = countsPerUrgency;
+                    dados.countsPerOwner = countsPerOwner;
+                    document.getElementById("totalTickets").innerText = ticketsMes;
+                }
+            }catch{}
+
             // Reset colunas/paginadores
             colData.novos = []; colData.atendimento = []; colData.parados = []; colData.vencidos = [];
             visibleCount.novos = visibleCount.atendimento = visibleCount.parados = visibleCount.vencidos = PAGE;
@@ -739,6 +759,9 @@
                 porAgente = {}; Object.keys(agentIdsMap).forEach(n => porAgente[n] = agentIdsMap[n].length);
             }
             renderDonutAgents(porAgente);
+
+            // Atualiza seletor do Kanban Individual com os mesmos agentes "ativos"
+            try { if (window.__updateOwnerOptionsFromTickets) window.__updateOwnerOptionsFromTickets(ativos); } catch {}
         };
 
         // Tema claro/escuro
@@ -836,8 +859,226 @@
   mo.observe(actions, { childList:true, subtree:true, characterData:true });
 })();
 </script>
+<script>
+// Kanban Geral vs Individual (com seletor de agente) + interceptação do /api/tickets
+(function(){
+  const STORAGE_VIEW = 'kanban.view';
+  const STORAGE_OWNER = 'kanban.owner';
+
+  function getView(){ return localStorage.getItem(STORAGE_VIEW) || 'geral'; }
+  function setView(v){ localStorage.setItem(STORAGE_VIEW, v); updateUI(); triggerReload(); }
+  function getOwner(){ return localStorage.getItem(STORAGE_OWNER) || ''; }
+  function setOwner(v){ localStorage.setItem(STORAGE_OWNER, v); triggerReload(); }
+
+  function triggerReload(){
+    try { if (typeof carregarDashboard === 'function') carregarDashboard(); } catch {}
+  }
+
+  function ensureControls(){
+    const actions = document.querySelector('.acoes'); if(!actions) return;
+    // Botão Geral
+    if (!document.getElementById('kanbanGeralBtn')){
+      const a = document.createElement('button');
+      a.id='kanbanGeralBtn'; a.className='btnGhost sm'; a.title='Kanban Geral'; a.textContent='🧩 Geral';
+      a.addEventListener('click', ()=> { localStorage.setItem(STORAGE_VIEW,'geral'); window.location.href='/dashboard'; });
+      actions.insertBefore(a, document.getElementById('logoutBtn'));
+    }
+    // Botão Individual
+    if (!document.getElementById('kanbanIndBtn')){
+      const b = document.createElement('button');
+      b.id='kanbanIndBtn'; b.className='btnGhost sm'; b.title='Kanban Individual'; b.textContent='👤 Individual';
+      b.addEventListener('click', ()=> { localStorage.setItem(STORAGE_VIEW,'individual'); window.location.href='/kanban-individual.html'; });
+      actions.insertBefore(b, document.getElementById('logoutBtn'));
+    }
+    // Seletor de agente
+    if (!document.getElementById('kanbanOwner')){
+      const wrap = document.createElement('div');
+      wrap.id = 'kanbanOwnerWrap';
+      wrap.style.display = 'none';
+      const sel = document.createElement('select'); sel.id='kanbanOwner'; sel.style.cssText='min-width:160px;height:36px;border:1px solid #d1d5db;border-radius:8px;padding:0 8px;';
+      sel.addEventListener('change', e=> setOwner(e.target.value));
+      const opt0 = document.createElement('option'); opt0.value=''; opt0.textContent='Selecione o agente...'; sel.appendChild(opt0);
+      wrap.appendChild(sel);
+      actions.insertBefore(wrap, document.getElementById('logoutBtn'));
+    }
+    // re-icone os botões (caso script de ícones já tenha rodado)
+    try{
+      const ev = new Event('DOMSubtreeModified'); document.querySelector('.acoes').dispatchEvent(ev);
+    } catch {}
+    updateUI();
+  }
+
+  function updateUI(){
+    const v = getView();
+    const g = document.getElementById('kanbanGeralBtn');
+    const i = document.getElementById('kanbanIndBtn');
+    const w = document.getElementById('kanbanOwnerWrap');
+    if(g){ g.style.outline = v==='geral' ? '2px solid #93c5fd' : 'none'; }
+    if(i){ i.style.outline = v==='individual' ? '2px solid #93c5fd' : 'none'; }
+    if(w){ w.style.display = v==='individual' ? '' : 'none'; }
+  }
+
+  // Popular seletor de agente com base nos tickets retornados
+  function updateOwnerOptionsFromTickets(tickets){
+    const sel = document.getElementById('kanbanOwner'); if(!sel) return;
+    const current = getOwner();
+    const owners = Array.from(new Set((tickets||[]).map(t => t.owner || 'Não atribuído'))).sort((a,b)=>a.localeCompare(b));
+    const existing = Array.from(sel.options).map(o=>o.value);
+    const changed = owners.length+1 !== existing.length || owners.some(o=>!existing.includes(o));
+    if(changed){
+      sel.innerHTML = '';
+      const opt0 = document.createElement('option'); opt0.value=''; opt0.textContent='Selecione o agente...'; sel.appendChild(opt0);
+      owners.forEach(o=>{ const opt=document.createElement('option'); opt.value=o; opt.textContent=o; sel.appendChild(opt); });
+    }
+    if(current && owners.includes(current)) sel.value = current; else sel.value = '';
+  }
+
+  // Expor helper para o wrapper de fetch abaixo
+  window.__updateOwnerOptionsFromTickets = updateOwnerOptionsFromTickets;
+
+  ensureControls();
+
+  // Intercepta /api/tickets para aplicar filtro por agente quando modo individual estiver ativo
+  const origFetch = window.fetch.bind(window);
+  function recompute(tickets){
+    const isInactive = (t)=> (t.baseStatus==='Closed'||t.baseStatus==='Resolved') || (String(t.status||'').toLowerCase().includes('cancelad')) || t.baseStatus==='Canceled' || t.baseStatus==='Cancelled';
+    const hoje = new Date(); const mesAtual = hoje.getMonth(); const anoAtual = hoje.getFullYear();
+    const counts = {
+      Total: tickets.filter(t=>!t.canceled).length,
+      New: tickets.filter(t=>t.baseStatus==='New' && !t.canceled).length,
+      InAttendance: tickets.filter(t=>t.baseStatus==='InAttendance' && !t.canceled).length,
+      Stopped: tickets.filter(t=>t.baseStatus==='Stopped' && !t.canceled).length,
+      Closed: tickets.filter(t=> (t.baseStatus==='Closed'||t.baseStatus==='Resolved') && !t.canceled).length,
+      Overdue: tickets.filter(t=>t.overdue && !t.canceled).length,
+      MonthOpenedAll: tickets.filter(t=>{ if(!t.createdDate) return false; const d=new Date(t.createdDate); return d.getMonth()===mesAtual && d.getFullYear()===anoAtual; }).length
+    };
+    counts.OpenTickets = counts.New + counts.InAttendance + counts.Stopped;
+    const countsPerUrgency = {}; const countsPerOwner={};
+    tickets.forEach(t=>{ if(isInactive(t)) return; countsPerUrgency[t.urgency] = (countsPerUrgency[t.urgency]||0)+1; countsPerOwner[t.owner] = (countsPerOwner[t.owner]||0)+1; });
+    return { counts, countsPerUrgency, countsPerOwner, tickets };
+  }
+  window.fetch = async function(input, init){
+    const url = (typeof input === 'string') ? input : (input && input.url) || '';
+    if (url.includes('/api/tickets')){
+      // Se modo individual + owner, pede já filtrado ao backend (?owner=...)
+      if (getView()==='individual'){
+        const owner = getOwner();
+        if (owner){
+          const u = new URL(url, location.origin);
+          u.searchParams.set('owner', owner);
+          const resp = await origFetch(u.toString(), init);
+          try{
+            const data = await resp.clone().json();
+            const norm = (s)=> (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+            const filtered = (data.tickets||[]).filter(t => norm(t.owner||'') === norm(owner));
+            setTimeout(()=>{ try{ window.__updateOwnerOptionsFromTickets(filtered); } catch {} }, 0);
+            // Sempre retorna resposta filtrada no modo individual
+            const mod = recompute(filtered);
+            return new Response(JSON.stringify(mod), { status: 200, headers: { 'Content-Type': 'application/json' } });
+          }catch{}
+          return resp;
+        }
+      }
+      const resp = await origFetch(input, init);
+      try{
+        const data = await resp.clone().json();
+        // atualiza lista de agentes assim que vierem tickets
+        setTimeout(()=>{ try{ window.__updateOwnerOptionsFromTickets(data.tickets||[]); } catch {} }, 0);
+        // no modo geral mantemos a resposta original
+        return resp;
+      } catch { return resp; }
+    }
+    return origFetch(input, init);
+  };
+  // Garante recarga imediata no modo individual após instalar o interceptor
+  try {
+    if (getView() === 'individual' && getOwner() && typeof carregarDashboard === 'function') {
+      carregarDashboard();
+    }
+  } catch {}
+})();
+</script>
+<script>
+(function(){
+  const STORAGE_VIEW='kanban.view';
+  const STORAGE_OWNER='kanban.owner';
+  if(localStorage.getItem(STORAGE_OWNER)) return;
+  const norm=(s)=> (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  async function tryDefault(){
+    const sel=document.getElementById('kanbanOwner');
+    if(!sel) return;
+    try{
+      const r=await fetch('/api/me'); if(!r.ok) return;
+      const me=await r.json();
+      const uname=norm(me.username||''); if(!uname) return;
+      const values=Array.from(sel.options).map(o=>o.value).filter(Boolean);
+      const match=values.find(v=>norm(v).includes(uname));
+      if(match){
+        sel.value=match;
+        localStorage.setItem(STORAGE_OWNER, match);
+        if(localStorage.getItem(STORAGE_VIEW)==='individual' && typeof carregarDashboard==='function'){ try{carregarDashboard();}catch{} }
+      }
+    }catch{}
+  }
+  function init(){
+    const sel=document.getElementById('kanbanOwner');
+    if(!sel){ setTimeout(init,400); return; }
+    tryDefault();
+    new MutationObserver(()=>tryDefault()).observe(sel,{childList:true,subtree:true});
+  }
+  init();
+})();
+</script>
+<script>
+// Override: alinhar lista do Kanban Individual à "Distribuição por Agente (ativos)"
+(function(){
+  if (typeof updateOwnerOptionsFromTickets !== 'function') return;
+  const ACTIVE_BASE = new Set(["New","InAttendance","Stopped"]);
+  const norm = (s)=> (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  const isCanceled = (t) => t.baseStatus==="Canceled" || t.baseStatus==="Cancelled" || norm(t.status||'').includes('cancelad');
+  const isAguardFornecedor = (t) => { const s = norm(t.status||''); return s.includes('aguard') && s.includes('fornecedor'); };
+
+  function upd(tickets){
+    const sel = document.getElementById('kanbanOwner'); if(!sel) return;
+    const current = (localStorage.getItem('kanban.owner')||'');
+    const ativos = (tickets||[]).filter(t=>{
+      if (isCanceled(t)) return false;
+      if (t.baseStatus==='Closed' || t.baseStatus==='Resolved') return false;
+      return ACTIVE_BASE.has(t.baseStatus) || isAguardFornecedor(t);
+    });
+    const owners = Array.from(new Set(ativos.map(t=> t.owner || 'Nǜo atribu��do'))).sort((a,b)=>a.localeCompare(b));
+    const existing = Array.from(sel.options).map(o=>o.value);
+    const changed = owners.length+1 !== existing.length || owners.some(o=>!existing.includes(o));
+    if(changed){
+      sel.innerHTML = '';
+      const opt0 = document.createElement('option'); opt0.value=''; opt0.textContent='Selecione o agente...'; sel.appendChild(opt0);
+      owners.forEach(o=>{ const opt=document.createElement('option'); opt.value=o; opt.textContent=o; sel.appendChild(opt); });
+    }
+    if(current && owners.includes(current)) sel.value = current; else sel.value = '';
+  }
+
+  // Sincroniza view/owner via querystring (?view=individual&owner=...)
+  (function syncFromQuery(){
+    try{
+      const q = new URLSearchParams(location.search);
+      let changed = false;
+      if (q.has('view')){ localStorage.setItem(STORAGE_VIEW, q.get('view')); changed = true; }
+      if (q.has('owner')){ localStorage.setItem(STORAGE_OWNER, q.get('owner')); changed = true; }
+      if (changed){
+        // limpa a query para evitar recargas repetidas
+        const clean = location.origin + location.pathname;
+        history.replaceState({}, document.title, clean);
+      }
+    }catch{}
+  })();
+
+  // redefine helper global usado pelo interceptador de fetch
+  window.__updateOwnerOptionsFromTickets = upd;
+})();
+</script>
 </body>
 </html>
+
 
 
 

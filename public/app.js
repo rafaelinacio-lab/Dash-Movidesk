@@ -167,6 +167,44 @@
         renderLegendAgents(mapa);
     };
 
+    /* ---------- INÍCIO: CÓDIGO ADICIONADO E MELHORADO ---------- */
+    /**
+     * Popula um dropdown com a lista de agentes para o filtro do Kanban.
+     * Esta versão é mais robusta para manipular as opções do <select>.
+     * @param {string[]} agents - Array com os nomes dos agentes.
+     */
+    const renderAgentFilterDropdown = (agents) => {
+        const dropdown = document.getElementById("agentFilter");
+        if (!dropdown) {
+            console.warn("Dropdown de filtro de agente '#agentFilter' não encontrado.");
+            return;
+        }
+
+        const selectedValue = dropdown.value;
+
+        // Limpa as opções existentes de forma segura
+        while (dropdown.options.length > 0) {
+            dropdown.remove(0);
+        }
+
+        // Adiciona a opção "Todos os Agentes"
+        dropdown.add(new Option("Todos os Agentes", "all"));
+
+        // Adiciona os agentes da lista
+        agents.sort().forEach(agentName => {
+            dropdown.add(new Option(agentName, agentName));
+        });
+
+        // Tenta restaurar a seleção anterior, se o valor ainda for válido
+        if (Array.from(dropdown.options).some(opt => opt.value === selectedValue)) {
+            dropdown.value = selectedValue;
+        } else {
+            dropdown.value = "all";
+        }
+    };
+    /* ---------- FIM: CÓDIGO ADICIONADO E MELHORADO ---------- */
+
+
     /* ---------- Paginação por coluna ---------- */
     const PAGE = 5;
     const colData = {novos:[],atendimento:[],parados:[],vencidos:[]};
@@ -314,6 +352,11 @@
             porAgente = {}; Object.keys(agentIdsMap).forEach(n => porAgente[n] = agentIdsMap[n].length);
         }
         renderDonutAgents(porAgente);
+
+        // ---------- INÍCIO: CÓDIGO ADICIONADO E MELHORADO ----------
+        // Popula o dropdown com a lista de agentes do gráfico
+        renderAgentFilterDropdown(Object.keys(porAgente));
+        // ---------- FIM: CÓDIGO ADICIONADO E MELHORADO ----------
 
         // 🔔 Verificação de “Inativação Movidesk”
         watchInativacao(dados.tickets || []);

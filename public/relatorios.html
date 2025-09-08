@@ -76,6 +76,13 @@
                         <label><input type="checkbox" id="optAgentes" checked> Por agente</label>
                       </div>
                       <div>
+                        <div style="font-weight:600; font-size:12px; opacity:.8; margin-bottom:4px;">Agente</div>
+                        <select id="agentSelect" style="min-width:220px; height:36px; border:1px solid #d1d5db; border-radius:8px; padding:0 8px;">
+                          <option value="">Todos</option>
+                        </select>
+                        <div style="font-size:11px; opacity:.7; margin-top:4px;">Lista baseada nos tickets atuais (owner).</div>
+                      </div>
+                      <div>
                         <div style="font-weight:600; font-size:12px; opacity:.8; margin-bottom:4px;">Período</div>
                         <label style="display:block; margin-bottom:4px;">De: <input type="date" id="dateStart"></label>
                         <label style="display:block;">Até: <input type="date" id="dateEnd"></label>
@@ -94,6 +101,31 @@
             <div id="relatorioConteudo"></div>
             <div id="printArea"></div>
         </section>
+        <script>
+        // Popula o select de Agentes com base nos tickets atuais (owner)
+        (async function(){
+          const sel = document.getElementById('agentSelect'); if(!sel) return;
+          function norm(s){ return (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(); }
+          try {
+            const r = await fetch('/api/tickets');
+            if (!r.ok) throw new Error('HTTP '+r.status);
+            const data = await r.json();
+            const owners = Array.from(new Set((data.tickets||[]).map(t => t.owner || 'Não atribuído')))
+                                .sort((a,b)=>a.localeCompare(b,'pt-BR'));
+            owners.forEach(o=>{ const opt=document.createElement('option'); opt.value=o; opt.textContent=o; sel.appendChild(opt); });
+            // Define padrão para o usuário logado se corresponder a algum owner
+            try {
+              const meResp = await fetch('/api/me');
+              if (meResp.ok) {
+                const me = await meResp.json();
+                const meName = norm(me.username||'');
+                const match = owners.find(o => norm(o).includes(meName));
+                if (match) sel.value = match;
+              }
+            } catch {}
+          } catch(e){ console.warn('Falha ao carregar agentes do kanban atual', e); }
+        })();
+        </script>
 
         <hr style="margin: 24px 0;">
         <section class="adminSection">

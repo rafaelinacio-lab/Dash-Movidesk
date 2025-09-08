@@ -266,7 +266,26 @@ let lastGoodPayload = null;
 app.get("/api/tickets", async (req, res) => {
     try {
         if (!MOVI_TOKEN) {
-            return res.json(makeMockPayload());
+            const base = makeMockPayload();
+            const ownerQ = (req.query.owner || "").toString();
+            if (!ownerQ) return res.json(base);
+            const norm = (s)=> (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+            const filteredTickets = (base.tickets||[]).filter(t => norm(t.owner||'') === norm(ownerQ));
+            const hoje = new Date(); const mesAtual = hoje.getMonth(); const anoAtual = hoje.getFullYear();
+            const ticketsMes = filteredTickets.filter(t=>{ if(!t.createdDate) return false; const d=new Date(t.createdDate); return d.getMonth()===mesAtual && d.getFullYear()===anoAtual; });
+            const counts = {
+                Total: filteredTickets.filter(t=>!t.canceled).length,
+                New: filteredTickets.filter(t=>t.baseStatus==='New' && !t.canceled).length,
+                InAttendance: filteredTickets.filter(t=>t.baseStatus==='InAttendance' && !t.canceled).length,
+                Stopped: filteredTickets.filter(t=>t.baseStatus==='Stopped' && !t.canceled).length,
+                Closed: filteredTickets.filter(t=> (t.baseStatus==='Closed'||t.baseStatus==='Resolved') && !t.canceled).length,
+                Overdue: filteredTickets.filter(t=>t.overdue && !t.canceled).length,
+                MonthOpenedAll: ticketsMes.length,
+            };
+            counts.OpenTickets = counts.New + counts.InAttendance + counts.Stopped;
+            const countsPerUrgency = {}; const countsPerOwner = {};
+            filteredTickets.forEach(t=>{ countsPerUrgency[t.urgency]=(countsPerUrgency[t.urgency]||0)+1; countsPerOwner[t.owner]=(countsPerOwner[t.owner]||0)+1; });
+            return res.json({ counts, countsPerUrgency, countsPerOwner, tickets: filteredTickets });
         }
 
         const userTeam = req.session.team;
@@ -325,36 +344,45 @@ app.get("/api/tickets", async (req, res) => {
             console.log(`#${t.id} | baseStatus: ${t.baseStatus} | status: ${t.status} | canceled: ${t.canceled}`);
         });
 
+        // Owner filter (Kanban Individual)
+        const ownerQ = (req.query.owner || "").toString();
+        const norm = (s)=> (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+        let effTickets = tickets;
+        if (ownerQ) {
+            const target = norm(ownerQ);
+            effTickets = tickets.filter(t => norm(t.owner||'') === target);
+        }
+
         // Calcula tickets criados no mês vigente
         const hoje = new Date();
         const mesAtual = hoje.getMonth();
         const anoAtual = hoje.getFullYear();
-        const ticketsMes = tickets.filter(t => {
+        const ticketsMes = effTickets.filter(t => {
             if (!t.createdDate) return false;
             const d = new Date(t.createdDate);
             return d.getMonth() === mesAtual && d.getFullYear() === anoAtual;
         });
 
         const counts = {
-            Total: tickets.filter((t) => !t.canceled).length,
-            New: tickets.filter((t) => t.baseStatus === "New" && !t.canceled).length,
-            InAttendance: tickets.filter((t) => t.baseStatus === "InAttendance" && !t.canceled).length,
-            Stopped: tickets.filter((t) => t.baseStatus === "Stopped" && !t.canceled).length,
-            Closed: tickets.filter((t) => isClosedOrResolved(t) && !t.canceled).length,
-            Overdue: tickets.filter((t) => t.overdue && !t.canceled).length,
+            Total: effTickets.filter((t) => !t.canceled).length,
+            New: effTickets.filter((t) => t.baseStatus === "New" && !t.canceled).length,
+            InAttendance: effTickets.filter((t) => t.baseStatus === "InAttendance" && !t.canceled).length,
+            Stopped: effTickets.filter((t) => t.baseStatus === "Stopped" && !t.canceled).length,
+            Closed: effTickets.filter((t) => isClosedOrResolved(t) && !t.canceled).length,
+            Overdue: effTickets.filter((t) => t.overdue && !t.canceled).length,
             MonthOpenedAll: ticketsMes.length,
         };
         counts.OpenTickets = counts.New + counts.InAttendance + counts.Stopped;
 
         const countsPerUrgency = {};
         const countsPerOwner = {};
-        tickets.forEach((t) => {
+        effTickets.forEach((t) => {
             if (isInactive(t)) return;
             countsPerUrgency[t.urgency] = (countsPerUrgency[t.urgency] || 0) + 1;
             countsPerOwner[t.owner] = (countsPerOwner[t.owner] || 0) + 1;
         });
 
-        lastGoodPayload = { counts, countsPerUrgency, countsPerOwner, tickets };
+        lastGoodPayload = { counts, countsPerUrgency, countsPerOwner, tickets: effTickets };
         res.json(lastGoodPayload);
     } catch (err) {
         console.error("❌ Erro ao buscar tickets:", err.message);

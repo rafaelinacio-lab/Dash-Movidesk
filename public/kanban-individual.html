@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <title>Kanban Individual</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body { min-height:100vh; margin:0; }
+    .centerOverlay {
+      position: fixed; inset: 0; display:flex; align-items:center; justify-content:center;
+      background: rgba(0,0,0,.35);
+    }
+    .centerBox {
+      width: min(92vw, 520px); padding: 20px; border-radius: 12px;
+      background: #fff; border:1px solid #e5e7eb; box-shadow: 0 10px 30px rgba(0,0,0,.15);
+    }
+    body.dark .centerOverlay { background: rgba(0,0,0,.55); }
+    body.dark .centerBox { background:#1f2937; border-color:#374151; color:#e5e7eb; }
+    .centerBox h2 { margin: 0 0 12px 0; font-size: 20px; }
+    .centerBox p { margin: 0 0 16px 0; color:#6b7280; }
+    body.dark .centerBox p { color:#9ca3af; }
+    .row { display:flex; gap:12px; align-items:center; }
+    .row .avatar { width:40px; height:40px; border-radius:50%; background:#d1d5db; display:inline-flex; align-items:center; justify-content:center; font-size:18px; }
+    body.dark .row .avatar { background:#374151; }
+    select { flex:1; min-width:220px; height:38px; border:1px solid #d1d5db; border-radius:8px; padding:0 10px; }
+    body.dark select { background:#111827; color:#e5e7eb; border-color:#374151; }
+    .actions { margin-top:16px; display:flex; gap:10px; justify-content:flex-end; }
+    .btn { height:36px; border-radius:8px; padding:0 14px; border:1px solid #d1d5db; background:#fff; cursor:pointer; }
+    .btn.primary { background:#2563eb; color:#fff; border-color:#2563eb; }
+    body.dark .btn { background:#111827; color:#e5e7eb; border-color:#374151; }
+    body.dark .btn.primary { background:#2563eb; border-color:#2563eb; color:#fff; }
+    .msg { margin-top:8px; font-size:12px; color:#6b7280; }
+    body.dark .msg { color:#9ca3af; }
+  </style>
+  <script>
+    // Utilidades compartilhadas
+    const norm = (s)=> (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+    const ACTIVE_BASE = new Set(["New","InAttendance","Stopped"]);
+    const isCanceled = (t) => t.baseStatus==="Canceled" || t.baseStatus==="Cancelled" || norm(t.status||'').includes('cancelad');
+    const isAguardFornecedor = (t) => { const s = norm(t.status||''); return s.includes('aguard') && s.includes('fornecedor'); };
+
+    async function loadActiveOwners(){
+      try{
+        const r = await fetch('/api/tickets');
+        if(r.status===401){ window.location.href='/login'; return []; }
+        const data = await r.json();
+        const ativos = (data.tickets||[]).filter(t=>{
+          if (isCanceled(t)) return false;
+          if (t.baseStatus==='Closed' || t.baseStatus==='Resolved') return false;
+          return ACTIVE_BASE.has(t.baseStatus) || isAguardFornecedor(t);
+        });
+        const owners = Array.from(new Set(ativos.map(t=> t.owner || 'Nao atribuido'))).sort((a,b)=>a.localeCompare(b));
+        return owners;
+      }catch(e){
+        console.error('Erro ao carregar agentes:', e);
+        return [];
+      }
+    }
+
+    function setViewIndividual(){
+      try{ localStorage.setItem('kanban.view','individual'); }catch{}
+    }
+    function setOwner(value){
+      try{ localStorage.setItem('kanban.owner', value||''); }catch{}
+    }
+    function goDashboard(){
+      const owner = localStorage.getItem('kanban.owner') || '';
+      const url = owner ? `/dashboard?view=individual&owner=${encodeURIComponent(owner)}` : '/dashboard?view=individual';
+      window.location.href = url;
+    }
+
+    async function init(){
+      setViewIndividual();
+      const sel = document.getElementById('ownerSel');
+      const owners = await loadActiveOwners();
+      sel.innerHTML = '';
+      const opt0 = document.createElement('option'); opt0.value=''; opt0.textContent='Selecione o agente...'; sel.appendChild(opt0);
+      owners.forEach(o=>{ const opt=document.createElement('option'); opt.value=o; opt.textContent=o; sel.appendChild(opt); });
+      const saved = localStorage.getItem('kanban.owner') || '';
+      if (saved && owners.includes(saved)) sel.value = saved;
+      document.getElementById('msg').textContent = owners.length ? '' : 'Nenhum agente com tickets ativos encontrado.';
+
+      // Ao selecionar um agente, consulta a API já filtrando por owner
+      sel.addEventListener('change', async () => {
+        const owner = sel.value;
+        if (!owner) return;
+        setOwner(owner);
+        try{
+          const u = new URL('/api/tickets', location.origin);
+          u.searchParams.set('owner', owner);
+          const r = await fetch(u);
+          if (r.ok) {
+            // Mostra contagem com fallback de filtro no cliente
+            const data = await r.json();
+            const norm = (s)=> (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+            const filtered = (data && data.tickets) ? (data.tickets||[]).filter(t => norm(t.owner||'') === norm(owner)) : [];
+            const qtd = filtered.length;
+            document.getElementById('msg').textContent = `${owner}: ${qtd} tickets encontrados. Clique em Confirmar para continuar.`;
+          } else {
+            document.getElementById('msg').textContent = 'Não foi possível consultar os tickets do agente.';
+          }
+        } catch (e){
+          document.getElementById('msg').textContent = 'Erro ao consultar a API.';
+        }
+      });
+    }
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</head>
+<body>
+  <div class="centerOverlay">
+    <div class="centerBox" role="dialog" aria-modal="true" aria-labelledby="indTitle">
+      <h2 id="indTitle">Kanban Individual</h2>
+      <p>Selecione o agente para visualizar apenas os seus tickets.</p>
+      <div class="row">
+        <div class="avatar" aria-hidden="true">👤</div>
+        <select id="ownerSel" aria-label="Agente">
+          <option value="">Carregando...</option>
+        </select>
+      </div>
+      <div id="msg" class="msg"></div>
+      <div class="actions">
+        <button class="btn" onclick="localStorage.setItem('kanban.view','geral'); goDashboard()">Voltar ao Geral</button>
+        <button class="btn primary" onclick="setOwner(document.getElementById('ownerSel').value); goDashboard()">Confirmar</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
