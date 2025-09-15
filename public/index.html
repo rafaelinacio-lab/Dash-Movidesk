@@ -573,7 +573,7 @@
             const hasAlert = matchesKeywordAlert(t.subject||"");
 
             const card = document.createElement("div");
-            card.className = "ticket" + (hasAlert ? " alert" : "");
+            card.className = "ticket" + (hasAlert ? " alert ticket-flagged" : "");
             card.dataset.ticketId = t.id;
 
             if (t.overdue && !hasAlert) card.style.outline = "2px solid rgba(220,38,38,.45)";

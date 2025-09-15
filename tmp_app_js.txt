@@ -13,7 +13,6 @@
     const slug = (s) => (s||"").toString().normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/\s+/g,"");
     const norm = (s) => (s||"").toString().normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
     const isCanceled = (t) => t.baseStatus==="Canceled" || t.baseStatus==="Cancelled" || String(t.status||"").toLowerCase().includes("cancelad");
-    const isInativacao = (t) => norm(`${t.subject} ${t.status}`).includes("inativacao");
 
     /* ---------- POPUP: Inativação Movidesk ---------- */
     let seenAlertIds = new Set();
@@ -232,8 +231,9 @@
 
         // Flag especial: Inativação Movidesk
         const txt = `${t.subject} ${t.status}`;
-        const flagged = norm(txt).includes("inativacao");
-        if (flagged) card.classList.add("ticket-flagged");
+        if (norm(txt).includes("inativacao")) {
+            card.classList.add("ticket-flagged");
+        }
 
         card.innerHTML = `
       <h4>#${t.id} - ${t.subject}</h4>
@@ -247,22 +247,6 @@
       </div>
       <small>Criado em ${t.createdDate ? new Date(t.createdDate).toLocaleDateString() : "-"}</small>
     `;
-        // Ajuste visual inline para garantir card 100% vermelho
-        if (flagged) {
-            try{
-                card.style.background = "#dc2626";
-                card.style.color = "#fff";
-                card.style.borderColor = "#b91c1c";
-                card.querySelectorAll('h4, p, small, .badge, .pill, .statusDetalhado, .badgePrev, .descricaoCompleta, .responsavelBox')
-                    .forEach(el=>{
-                        if (el.matches('.badge, .pill, .statusDetalhado, .badgePrev, .descricaoCompleta, .responsavelBox')) {
-                            el.style.background = 'transparent';
-                            el.style.borderColor = 'rgba(255,255,255,0.45)';
-                        }
-                        el.style.color = '#fff';
-                    });
-            }catch(_){ }
-        }
         return card;
     };
 
@@ -335,17 +319,14 @@
         colData.novos = []; colData.atendimento = []; colData.parados = []; colData.vencidos = [];
         visibleCount.novos = visibleCount.atendimento = visibleCount.parados = visibleCount.vencidos = PAGE;
 
-        // Distribui tickets (ignora fechados/resolvidos/cancelados) e prioriza "inativacao" no topo
+        // Distribui tickets (ignora fechados/resolvidos/cancelados)
         (dados.tickets||[]).forEach(t=>{
             const closed = (t.baseStatus==="Closed" || t.baseStatus==="Resolved");
             if (closed || isCanceled(t)) return;
-            let arr = null;
-            if (t.overdue) arr = colData.vencidos;
-            else if (t.baseStatus==="New") arr = colData.novos;
-            else if (t.baseStatus==="InAttendance") arr = colData.atendimento;
-            else if (t.baseStatus==="Stopped") arr = colData.parados;
-            if (!arr) return;
-            if (isInativacao(t)) arr.unshift(t); else arr.push(t);
+            if (t.overdue) colData.vencidos.push(t);
+            else if (t.baseStatus==="New") colData.novos.push(t);
+            else if (t.baseStatus==="InAttendance") colData.atendimento.push(t);
+            else if (t.baseStatus==="Stopped") colData.parados.push(t);
         });
 
         renderColumns();
@@ -392,3 +373,4 @@
     carregarDashboard();
     setInterval(carregarDashboard, 300000); // 5 min
 })();
+

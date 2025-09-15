@@ -113,6 +113,71 @@ body.dark .btnGhost.danger { color: #f59e0b; }
 .ticket:hover {
     box-shadow: 0 4px 16px rgba(0,0,0,0.12);
 }
+
+/* Ticket marcado como inativação: destacar e manter legibilidade */
+.ticket.ticket-flagged,
+.ticket.alert {
+    background: #dc2626 !important; /* vermelho forte (todo o card) */
+    color: #fff !important;
+    border-color: #b91c1c !important;
+    box-shadow: inset 4px 0 0 #ef4444;
+}
+.ticket.ticket-flagged h4,
+.ticket.ticket-flagged p,
+.ticket.ticket-flagged small,
+.ticket.alert h4,
+.ticket.alert p,
+.ticket.alert small { color: #fff !important; }
+/* Zera fundos internos para manter o card todo vermelho */
+.ticket.ticket-flagged .badge,
+.ticket.ticket-flagged .pill,
+.ticket.ticket-flagged .statusDetalhado,
+.ticket.ticket-flagged .badgePrev,
+.ticket.ticket-flagged .descricaoCompleta,
+.ticket.ticket-flagged .responsavelBox,
+.ticket.alert .badge,
+.ticket.alert .pill,
+.ticket.alert .statusDetalhado,
+.ticket.alert .badgePrev,
+.ticket.alert .descricaoCompleta,
+.ticket.alert .responsavelBox {
+    background: transparent !important;
+    color: #fff !important;
+    border-color: rgba(255,255,255,0.45) !important;
+}
+.ticket.ticket-flagged a,
+.ticket.alert a { color: #fff; text-decoration: underline; }
+
+/* Modo escuro: usa vermelho mais fechado e texto claro */
+body.dark .ticket.ticket-flagged,
+body.dark .ticket.alert {
+    background: #991b1b !important; /* vermelho fechado no escuro */
+    color: #fff !important;
+    border-color: #ef4444 !important;
+    box-shadow: inset 4px 0 0 #ef4444;
+}
+body.dark .ticket.ticket-flagged h4,
+body.dark .ticket.ticket-flagged p,
+body.dark .ticket.ticket-flagged small,
+body.dark .ticket.alert h4,
+body.dark .ticket.alert p,
+body.dark .ticket.alert small { color: #fff; }
+body.dark .ticket.ticket-flagged .badge,
+body.dark .ticket.ticket-flagged .pill,
+body.dark .ticket.ticket-flagged .badgePrev,
+body.dark .ticket.ticket-flagged .descricaoCompleta,
+body.dark .ticket.ticket-flagged .responsavelBox,
+body.dark .ticket.alert .badge,
+body.dark .ticket.alert .pill,
+body.dark .ticket.alert .badgePrev,
+body.dark .ticket.alert .descricaoCompleta,
+body.dark .ticket.alert .responsavelBox {
+    background: rgba(255,255,255,0.14) !important;
+    color: #fff !important;
+    border-color: rgba(255,255,255,0.35) !important;
+}
+body.dark .ticket.ticket-flagged a,
+body.dark .ticket.alert a { color: #fff; text-decoration: underline; }
 .badge {
     display: inline-block;
     padding: 4px 12px;

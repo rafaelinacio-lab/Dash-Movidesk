@@ -17,7 +17,7 @@ const PORT = process.env.PORT || 3000;
 /* -------------------- DB -------------------- */
 const db = await mysql.createPool({
     host: process.env.DB_HOST || "192.168.91.168",
-    port: process.env.DB_PORT || 5432,   // 🔹 seu MariaDB está rodando nesta porta
+    port: process.env.DB_PORT || 5432, // 🔹 seu MariaDB está rodando nesta porta
     user: process.env.DB_USER || "root",
     password: process.env.DB_PASS || "V!@soft2025#@2306",
     database: process.env.DB_NAME || "si_panel",
@@ -109,7 +109,6 @@ app.get("/admin/users", requireAdmin, async (req, res) => {
     res.json(rows);
 });
 
-
 app.post("/admin/users/update", requireAdmin, async (req, res) => {
     const { userId, team, role } = req.body;
     try {
@@ -121,7 +120,6 @@ app.post("/admin/users/update", requireAdmin, async (req, res) => {
     }
 });
 
-// Rota para excluir usuário
 app.post("/admin/users/delete", requireAdmin, async (req, res) => {
     const { userId } = req.body;
     if (!userId) return res.status(400).json({ error: "ID do usuário obrigatório" });
@@ -133,19 +131,17 @@ app.post("/admin/users/delete", requireAdmin, async (req, res) => {
         res.status(500).json({ error: "Erro ao excluir usuário" });
     }
 });
-// Rota para criar usuário
+
 app.post("/admin/users/create", requireAdmin, async (req, res) => {
     const { username, password, team, role } = req.body;
     if (!username || !password || !team || !role) {
         return res.status(400).json({ error: "Dados obrigatórios ausentes" });
     }
     try {
-        // Verifica se já existe usuário com o mesmo nome
         const [rows] = await db.query("SELECT id FROM users WHERE username = ?", [username]);
         if (rows.length > 0) {
             return res.status(409).json({ error: "Usuário já existe" });
         }
-        // Hash da senha
         const password_hash = await bcrypt.hash(password, 10);
         await db.query(
             "INSERT INTO users (username, password_hash, team, role) VALUES (?, ?, ?, ?)",
@@ -262,30 +258,11 @@ const makeMockPayload = () => {
 
 let lastGoodPayload = null;
 
-/* endpoint tickets */
+/* ======= /api/tickets (dashboard) ======= */
 app.get("/api/tickets", async (req, res) => {
     try {
         if (!MOVI_TOKEN) {
-            const base = makeMockPayload();
-            const ownerQ = (req.query.owner || "").toString();
-            if (!ownerQ) return res.json(base);
-            const norm = (s)=> (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
-            const filteredTickets = (base.tickets||[]).filter(t => norm(t.owner||'') === norm(ownerQ));
-            const hoje = new Date(); const mesAtual = hoje.getMonth(); const anoAtual = hoje.getFullYear();
-            const ticketsMes = filteredTickets.filter(t=>{ if(!t.createdDate) return false; const d=new Date(t.createdDate); return d.getMonth()===mesAtual && d.getFullYear()===anoAtual; });
-            const counts = {
-                Total: filteredTickets.filter(t=>!t.canceled).length,
-                New: filteredTickets.filter(t=>t.baseStatus==='New' && !t.canceled).length,
-                InAttendance: filteredTickets.filter(t=>t.baseStatus==='InAttendance' && !t.canceled).length,
-                Stopped: filteredTickets.filter(t=>t.baseStatus==='Stopped' && !t.canceled).length,
-                Closed: filteredTickets.filter(t=> (t.baseStatus==='Closed'||t.baseStatus==='Resolved') && !t.canceled).length,
-                Overdue: filteredTickets.filter(t=>t.overdue && !t.canceled).length,
-                MonthOpenedAll: ticketsMes.length,
-            };
-            counts.OpenTickets = counts.New + counts.InAttendance + counts.Stopped;
-            const countsPerUrgency = {}; const countsPerOwner = {};
-            filteredTickets.forEach(t=>{ countsPerUrgency[t.urgency]=(countsPerUrgency[t.urgency]||0)+1; countsPerOwner[t.owner]=(countsPerOwner[t.owner]||0)+1; });
-            return res.json({ counts, countsPerUrgency, countsPerOwner, tickets: filteredTickets });
+            return res.json(makeMockPayload());
         }
 
         const userTeam = req.session.team;
@@ -293,11 +270,8 @@ app.get("/api/tickets", async (req, res) => {
             return res.json({ counts:{}, countsPerUrgency:{}, countsPerOwner:{}, tickets:[] });
         }
 
-
         const todayLocalISO = ymd(new Date());
-
-    // Busca apenas tickets ativos: New, InAttendance, Stopped
-    let filter = `ownerTeam eq '${userTeam}' and (baseStatus eq 'New' or baseStatus eq 'InAttendance' or baseStatus eq 'Stopped')`;
+        let filter = `ownerTeam eq '${userTeam}' and (baseStatus eq 'New' or baseStatus eq 'InAttendance' or baseStatus eq 'Stopped')`;
 
         const url =
             `${MOVI_URL}?token=${MOVI_TOKEN}&$top=500` +
@@ -307,13 +281,8 @@ app.get("/api/tickets", async (req, res) => {
 
         const { data } = await axios.get(url, { timeout: 15000 });
 
-
         const tickets = data.map((t) => {
-            let prevISO = null;
-            if (t.slaSolutionDate) {
-                const d = new Date(t.slaSolutionDate);
-                if (!isNaN(d)) prevISO = ymd(d);
-            }
+            let prevISO = t.slaSolutionDate ? ymd(new Date(t.slaSolutionDate)) : null;
             if (!prevISO) {
                 const forecastRaw = getForecastRaw(t);
                 const forecastDate = parseAnyDate(forecastRaw);
@@ -338,22 +307,10 @@ app.get("/api/tickets", async (req, res) => {
             };
         });
 
-        // Log para debug: mostra os status dos tickets retornados
-        console.log("Tickets retornados:");
-        tickets.forEach(t => {
-            console.log(`#${t.id} | baseStatus: ${t.baseStatus} | status: ${t.status} | canceled: ${t.canceled}`);
-        });
-
-        // Owner filter (Kanban Individual)
         const ownerQ = (req.query.owner || "").toString();
         const norm = (s)=> (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
-        let effTickets = tickets;
-        if (ownerQ) {
-            const target = norm(ownerQ);
-            effTickets = tickets.filter(t => norm(t.owner||'') === target);
-        }
+        let effTickets = ownerQ ? tickets.filter(t => norm(t.owner||'') === norm(ownerQ)) : tickets;
 
-        // Calcula tickets criados no mês vigente
         const hoje = new Date();
         const mesAtual = hoje.getMonth();
         const anoAtual = hoje.getFullYear();
@@ -390,11 +347,150 @@ app.get("/api/tickets", async (req, res) => {
             console.warn("⚠ Sem conexão. Enviando último payload válido.");
             return res.json(lastGoodPayload);
         }
-        return res.json(makeMockPayload());
+        return res.status(500).json(makeMockPayload());
     }
 });
 
-// Rotas para melhorias
+/* ======= /api/tickets/:id (detalhe p/ modal) ======= */
+app.get("/api/tickets/:id", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!id) return res.status(400).json({ error: "ID inválido" });
+
+    if (!MOVI_TOKEN) {
+      const source = lastGoodPayload?.tickets?.length ? lastGoodPayload.tickets : makeMockPayload().tickets;
+      const t = (source || []).find((x) => Number(x.id) === id);
+      if (!t) return res.status(404).json({ error: "Ticket não encontrado" });
+      return res.json(t);
+    }
+
+    const todayLocalISO = ymd(new Date());
+    const filter = `id eq ${id}`;
+    const url =
+      `${MOVI_URL}?token=${MOVI_TOKEN}&$top=1` +
+      `&$select=id,subject,description,urgency,baseStatus,status,ownerTeam,createdDate,closedIn,slaSolutionDate` +
+      `&$expand=`+
+        `owner($select=id,businessName),`+
+        `requester($select=firstName,businessName),`+
+        `createdBy($select=businessName),`+
+        `clients($select=id,businessName,emails,isRequester),`+
+        `customFieldValues,`+
+        `actions($select=description,isHtml,createdDate,origin)` +
+      `&$filter=${encodeURIComponent(filter)}`;
+
+    const { data } = await axios.get(url, { timeout: 15000 });
+
+    if (!Array.isArray(data) || data.length === 0) {
+      return res.status(404).json({ error: "Ticket não encontrado" });
+    }
+
+    const raw = data[0];
+    let prevISO = null;
+    if (raw.slaSolutionDate) {
+      const d = new Date(raw.slaSolutionDate);
+      if (!isNaN(d)) prevISO = ymd(d);
+    }
+    if (!prevISO) {
+      const forecastRaw = getForecastRaw(raw);
+      const forecastDate = parseAnyDate(forecastRaw);
+      prevISO = forecastDate ? ymd(forecastDate) : null;
+    }
+    const inactive = isInactive(raw);
+    const { overdue, daysUntilDue, dueCategory } = getDueInfo(prevISO, inactive, todayLocalISO);
+
+    let requester = null;
+    let requesterEmails = null;
+    if (Array.isArray(raw.clients) && raw.clients.length) {
+        const reqClient = raw.clients.find(c => c.isRequester) || raw.clients[0];
+        if (reqClient) {
+            requester = reqClient.businessName || reqClient.firstName || null;
+            requesterEmails = Array.isArray(reqClient.emails) && reqClient.emails.length ? reqClient.emails : null;
+        }
+    }
+    if (!requester) requester = raw.requester?.businessName || raw.requester?.firstName || raw.createdBy?.businessName || null;
+
+    let description = raw.description || null;
+    if (!description && Array.isArray(raw.actions) && raw.actions.length > 0) {
+        const firstWithDesc = raw.actions.find(a => a && a.description);
+        if (firstWithDesc) description = firstWithDesc.description;
+    }
+
+    const mapped = {
+        id: raw.id,
+        subject: raw.subject,
+        description,
+        urgency: raw.urgency || "Não definida",
+        baseStatus: raw.baseStatus,
+        status: raw.status || "Não definido",
+        owner: raw.owner?.businessName || "Não atribuído",
+        ownerTeam: raw.ownerTeam || "Não definido",
+        createdDate: raw.createdDate,
+        requester,
+        requesterEmails,
+        previsaoSolucao: prevISO,
+        overdue,
+        daysUntilDue,
+        dueCategory,
+        canceled: isCanceled(raw),
+    };
+
+    return res.json(mapped);
+  } catch (err) {
+    console.error("Erro ao buscar ticket por ID:", err?.message || err);
+    return res.status(500).json({ error: "Falha ao obter ticket" });
+  }
+});
+
+/* ======= /api/tickets/search (ID ou assunto) ======= */
+app.get("/api/tickets/search", async (req, res) => {
+    try {
+        const q = (req.query.q || "").toString().trim();
+        if (!q) return res.json({ results: [] });
+
+        if (!MOVI_TOKEN) {
+            // Mock logic
+            const base = lastGoodPayload?.tickets || makeMockPayload().tickets;
+            const norm = (s)=> (s||'').toLowerCase();
+            const results = base.filter(t => norm(t.subject).includes(norm(q)) || String(t.id).includes(q));
+            return res.json({ results: results.slice(0, 20) });
+        }
+
+        const userTeam = req.session.team;
+        const teamFilter = userTeam ? `ownerTeam eq '${userTeam}'` : `id gt 0`;
+        const idNum = Number(q.replace(/\D/g, ''));
+
+        let filter;
+        if (idNum && !isNaN(idNum)) {
+            filter = `id eq ${idNum}`;
+        } else {
+            const safeQ = q.replace(/'/g, "''").toLowerCase();
+            filter = `contains(tolower(subject),'${safeQ}')`;
+        }
+
+        const finalFilter = `${teamFilter} and (${filter})`;
+        const url = `${MOVI_URL}?token=${MOVI_TOKEN}&$top=30&$select=id,subject,createdDate,urgency,baseStatus,status,ownerTeam&$expand=owner($select=businessName)&$filter=${encodeURIComponent(finalFilter)}`;
+        
+        const { data } = await axios.get(url, { timeout: 15000 });
+        
+        const results = (data || []).map(t => ({
+            id: t.id,
+            subject: t.subject,
+            createdDate: t.createdDate,
+            urgency: t.urgency || 'Não definida',
+            baseStatus: t.baseStatus,
+            status: t.status || 'Não definido',
+            owner: t.owner?.businessName || 'Não atribuído'
+        }));
+
+        return res.json({ results });
+    } catch (err) {
+        console.error('Erro busca tickets:', err?.message || err);
+        return res.status(500).json({ error: 'Falha na busca' });
+    }
+});
+
+
+/* ---------------- Melhorias ---------------- */
 app.get("/api/melhorias", async (req, res) => {
     try {
         const data = await fs.readFile(MELHORIAS_PATH, "utf-8");
@@ -406,16 +502,19 @@ app.get("/api/melhorias", async (req, res) => {
         await fs.writeFile(MELHORIAS_PATH, JSON.stringify(melhorias, null, 2));
         res.json(melhorias);
     } catch (err) {
+        if (err.code === 'ENOENT') { // Se o arquivo não existe, retorna lista vazia
+            return res.json([]);
+        }
         res.status(500).json({ error: "Erro ao carregar melhorias" });
     }
 });
 
-app.post("/api/melhorias/status", async (req, res) => {
+app.post("/api/melhorias/status", requireAdmin, async (req, res) => {
     const { id, status } = req.body;
     if (!id || !status) return res.status(400).json({ error: "Dados obrigatórios" });
     try {
         const data = await fs.readFile(MELHORIAS_PATH, "utf-8");
-        const melhorias = JSON.parse(data);
+        let melhorias = JSON.parse(data);
         const idx = melhorias.findIndex(m => m.id === id);
         if (idx === -1) return res.status(404).json({ error: "Melhoria não encontrada" });
         melhorias[idx].status = status;
@@ -425,24 +524,27 @@ app.post("/api/melhorias/status", async (req, res) => {
         res.status(500).json({ error: "Erro ao atualizar melhoria" });
     }
 });
+
 app.post("/api/melhorias/sugerir", async (req, res) => {
     const { titulo, descricao, autor } = req.body;
     if (!titulo || !descricao || !autor) {
         return res.status(400).json({ error: "Campos obrigatórios ausentes" });
     }
     try {
-        // Carrega melhorias existentes
         let melhorias = [];
         try {
             const data = await fs.readFile(MELHORIAS_PATH, "utf-8");
             melhorias = JSON.parse(data);
-        } catch {}
-        // Adiciona nova melhoria
+        } catch (err) {
+            if (err.code !== 'ENOENT') throw err;
+        }
         melhorias.push({
+            id: Math.random().toString(36).slice(2, 10),
             titulo,
             descricao,
             autor,
-            data: new Date().toISOString()
+            data: new Date().toISOString(),
+            status: "Enviada"
         });
         await fs.writeFile(MELHORIAS_PATH, JSON.stringify(melhorias, null, 2));
         res.json({ success: true });
@@ -452,8 +554,6 @@ app.post("/api/melhorias/sugerir", async (req, res) => {
     }
 });
 
-/* static files */
-
-/* start */
+/* ---------------- Static & Start ---------------- */
 app.use(express.static("public"));
 app.listen(PORT, () => console.log(`✅ Servidor rodando em http://localhost:${PORT}`));
