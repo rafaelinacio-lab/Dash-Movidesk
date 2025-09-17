@@ -351,6 +351,91 @@
             }
         };
 
+        let userTicketOrder = {};
+        let dragState = null;
+        const ORDER_COLUMNS = ["novos", "atendimento", "parados", "vencidos"];
+
+        const persistTicketOrder = async (columnKey, order) => {
+            try {
+                await fetch("/api/ticket-order", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ columnKey, order }),
+                });
+            } catch (err) {
+                console.error("Erro ao salvar ordem de tickets:", err);
+            }
+        };
+
+        const getOrderIndexMap = (columnKey) => {
+            const saved = userTicketOrder[columnKey] || [];
+            const map = new Map();
+            saved.forEach((ticketId, index) => {
+                map.set(String(ticketId), index);
+            });
+            return map;
+        };
+
+        const registerCardDragEvents = (card, columnKey) => {
+            card.setAttribute("draggable", "true");
+            card.addEventListener("dragstart", (event) => {
+                dragState = { ticketId: card.dataset.ticketId, columnKey };
+                card.classList.add("dragging");
+                if (event.dataTransfer) {
+                    event.dataTransfer.effectAllowed = "move";
+                    event.dataTransfer.setData("text/plain", card.dataset.ticketId);
+                }
+            });
+            card.addEventListener("dragend", () => {
+                card.classList.remove("dragging");
+                dragState = null;
+            });
+        };
+
+        const computeDropIndex = (listElement, clientY) => {
+            const cards = Array.from(listElement.querySelectorAll(".ticket:not(.dragging)"));
+            for (let i = 0; i < cards.length; i += 1) {
+                const rect = cards[i].getBoundingClientRect();
+                if (clientY < rect.top + rect.height / 2) {
+                    return i;
+                }
+            }
+            return cards.length;
+        };
+
+        const ensureListDnDHandlers = (listElement, columnKey) => {
+            if (listElement.dataset.ddInit) return;
+            listElement.dataset.ddInit = "true";
+            listElement.addEventListener("dragover", (event) => {
+                if (!dragState || dragState.columnKey !== columnKey) return;
+                event.preventDefault();
+                listElement.classList.add("drop-target");
+            });
+            listElement.addEventListener("dragleave", () => {
+                listElement.classList.remove("drop-target");
+            });
+            listElement.addEventListener("drop", (event) => {
+                if (!dragState || dragState.columnKey !== columnKey) return;
+                event.preventDefault();
+                listElement.classList.remove("drop-target");
+                const { ticketId } = dragState;
+                const collection = colData[columnKey];
+                if (!collection) return;
+                const currentIndex = collection.findIndex((item) => String(item.id) === ticketId);
+                if (currentIndex === -1) return;
+                const dropIndex = computeDropIndex(listElement, event.clientY);
+                const [ticket] = collection.splice(currentIndex, 1);
+                let targetIndex = dropIndex;
+                if (targetIndex > collection.length) targetIndex = collection.length;
+                if (targetIndex > currentIndex) targetIndex -= 1;
+                collection.splice(targetIndex, 0, ticket);
+                userTicketOrder[columnKey] = collection.map((item) => String(item.id));
+                persistTicketOrder(columnKey, userTicketOrder[columnKey]);
+                dragState = null;
+                renderColumns();
+            });
+        };
+
         /* ---------- Helpers ---------- */
         const slug = (s) => (s||"").toString().normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();
 
@@ -811,16 +896,37 @@
             defs.forEach(({key,listId,btnSel})=>{
                 const list=document.getElementById(listId);
                 const btn=document.querySelector(btnSel);
+                if (!list) return;
                 list.innerHTML="";
+                list.dataset.columnKey = key;
+                ensureListDnDHandlers(list, key);
                 const total=colData[key].length;
                 const showN=Math.min(visibleCount[key], total);
+                const orderIndex = getOrderIndexMap(key);
+                const hasSavedOrder = orderIndex.size > 0;
                 const ordered = colData[key].slice().sort((a,b)=>{
+                    const aId = String(a.id);
+                    const bId = String(b.id);
+                    const aHasOrder = orderIndex.has(aId);
+                    const bHasOrder = orderIndex.has(bId);
+                    if (hasSavedOrder && (aHasOrder || bHasOrder)) {
+                        if (aHasOrder && bHasOrder) {
+                            return orderIndex.get(aId) - orderIndex.get(bId);
+                        }
+                        return aHasOrder ? -1 : 1;
+                    }
                     const aFlag = matchesKeywordAlert(a);
                     const bFlag = matchesKeywordAlert(b);
-                    if (aFlag === bFlag) return 0;
-                    return aFlag ? -1 : 1;
+                    if (aFlag !== bFlag) return aFlag ? -1 : 1;
+                    return 0;
                 });
-                ordered.slice(0,showN).forEach(t=>list.appendChild(buildTicketCard(t)));
+                ordered.slice(0,showN).forEach(t=>{
+                    const card = buildTicketCard(t);
+                    card.dataset.ticketId = String(t.id);
+                    card.dataset.columnKey = key;
+                    registerCardDragEvents(card, key);
+                    list.appendChild(card);
+                });
                 if (btn) btn.style.display = total > showN ? "block" : "none";
             });
         };
@@ -871,12 +977,14 @@
         const carregarDashboard = async () => {
             let dados;
             try {
-                const [ticketsResp, colorsResp] = await Promise.all([
+                const [ticketsResp, colorsResp, orderResp] = await Promise.all([
                     fetch("/api/tickets"),
                     fetch("/api/card-colors"),
+                    fetch("/api/ticket-order"),
                 ]);
 
                 if (ticketsResp.status === 401) { window.location.href = "/login"; return; }
+                if (!ticketsResp.ok) throw new Error(`Falha ao buscar tickets: ${ticketsResp.status}`);
 
                 dados = await ticketsResp.json();
 
@@ -900,6 +1008,26 @@
                     }
                 } else if (colorsResp.status === 401) {
                     userCardColors = {};
+                }
+
+                if (orderResp.ok) {
+                    try {
+                        const payload = await orderResp.json();
+                        if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+                            userTicketOrder = {};
+                            Object.entries(payload).forEach(([columnKey, arr]) => {
+                                if (!ORDER_COLUMNS.includes(columnKey)) return;
+                                if (!Array.isArray(arr)) return;
+                                userTicketOrder[columnKey] = arr.map((id) => String(id));
+                            });
+                        } else {
+                            userTicketOrder = {};
+                        }
+                    } catch (err) {
+                        userTicketOrder = {};
+                    }
+                } else if (orderResp.status === 401) {
+                    userTicketOrder = {};
                 }
             } catch(e){
                 console.error("Erro ao buscar /api/tickets:", e);
@@ -963,6 +1091,12 @@
                 else if (isNew) colData.novos.push(t);
                 else if (t.baseStatus==="InAttendance") colData.atendimento.push(t);
                 else if (t.baseStatus==="Stopped" || isAguardFornecedor(t)) colData.parados.push(t);
+            });
+
+            ORDER_COLUMNS.forEach((columnKey) => {
+                const present = new Set(colData[columnKey].map((item) => String(item.id)));
+                if (!userTicketOrder[columnKey]) return;
+                userTicketOrder[columnKey] = userTicketOrder[columnKey].filter((id) => present.has(String(id)));
             });
 
             // Widgets calculados a partir das colunas/ativos

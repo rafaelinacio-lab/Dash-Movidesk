@@ -478,6 +478,21 @@ body.dark .ticket.ticket-flagged h4 {
 .ticket.ticket-can-edit-color .ticketActions button {
     cursor: pointer;
 }
+.ticket[draggable="true"] {
+    cursor: grab;
+}
+.ticket.dragging {
+    opacity: 0.45;
+    cursor: grabbing;
+    transform: scale(0.98);
+}
+.lista.drop-target {
+    outline: 2px dashed rgba(148,163,184,0.45);
+    outline-offset: 6px;
+}
+body.dark .lista.drop-target {
+    outline-color: rgba(96,165,250,0.55);
+}
 .ticketColorIcon {
     position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
     width: 18px; height: 18px; pointer-events: none; z-index: 3;

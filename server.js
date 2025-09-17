@@ -35,8 +35,19 @@ try {
                 REFERENCES users(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
+    await db.query(`
+        CREATE TABLE IF NOT EXISTS user_ticket_orders (
+            user_id INT NOT NULL,
+            column_key VARCHAR(32) NOT NULL,
+            ticket_order TEXT NOT NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (user_id, column_key),
+            CONSTRAINT fk_user_ticket_orders_user FOREIGN KEY (user_id)
+                REFERENCES users(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
 } catch (err) {
-    console.error("Erro ao garantir tabela user_card_colors:", err.message);
+    console.error("Erro ao garantir tabelas de preferências:", err.message);
 }
 
 
@@ -56,6 +67,7 @@ const __dirname = path.dirname(__filename);
 const MELHORIAS_PATH = path.join(__dirname, "melhorias.json");
 
 const HEX_COLOR_REGEX = /^#[0-9A-Fa-f]{6}$/;
+const VALID_ORDER_COLUMNS = new Set(["novos", "atendimento", "parados", "vencidos"]);
 
 /* ----------------- Login ------------------- */
 app.get("/", (req, res) => {
@@ -181,6 +193,67 @@ app.post("/api/card-colors", requireAuth, async (req, res) => {
     } catch (err) {
         console.error("Erro ao salvar cor personalizada:", err);
         res.status(500).json({ error: "Erro ao salvar preferências" });
+    }
+});
+
+app.get("/api/ticket-order", requireAuth, async (req, res) => {
+    try {
+        const [rows] = await db.query(
+            "SELECT column_key, ticket_order FROM user_ticket_orders WHERE user_id = ?",
+            [req.session.userId]
+        );
+        const result = {};
+        for (const row of rows) {
+            if (!row || !row.column_key) continue;
+            try {
+                const parsed = JSON.parse(row.ticket_order || "[]");
+                if (Array.isArray(parsed)) {
+                    result[row.column_key] = parsed.map((id) => String(id));
+                }
+            } catch (err) {
+                console.warn("Erro ao analisar ordem salva para coluna", row.column_key, err.message);
+            }
+        }
+        res.json(result);
+    } catch (err) {
+        console.error("Erro ao buscar ordem de tickets:", err);
+        res.status(500).json({ error: "Erro ao carregar ordem de tickets" });
+    }
+});
+
+app.post("/api/ticket-order", requireAuth, async (req, res) => {
+    const userId = req.session.userId;
+    const body = req.body || {};
+    const columnKey = String(body.columnKey || "").trim();
+    const order = Array.isArray(body.order) ? body.order.map((id) => String(id).trim()).filter(Boolean) : null;
+
+    if (!VALID_ORDER_COLUMNS.has(columnKey)) {
+        return res.status(400).json({ error: "Coluna inválida" });
+    }
+    if (!order) {
+        return res.status(400).json({ error: "Ordem inválida" });
+    }
+
+    try {
+        if (order.length === 0) {
+            await db.query(
+                "DELETE FROM user_ticket_orders WHERE user_id = ? AND column_key = ?",
+                [userId, columnKey]
+            );
+            return res.json({ success: true, order: [] });
+        }
+
+        await db.query(
+            `INSERT INTO user_ticket_orders (user_id, column_key, ticket_order)
+             VALUES (?, ?, ?)
+             ON DUPLICATE KEY UPDATE ticket_order = VALUES(ticket_order)`,
+            [userId, columnKey, JSON.stringify(order)]
+        );
+
+        res.json({ success: true, order });
+    } catch (err) {
+        console.error("Erro ao salvar ordem de tickets:", err);
+        res.status(500).json({ error: "Erro ao salvar ordem de tickets" });
     }
 });
 
