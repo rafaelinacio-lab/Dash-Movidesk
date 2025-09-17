@@ -23,6 +23,23 @@ const db = await mysql.createPool({
     database: process.env.DB_NAME || "si_panel",
 });
 
+try {
+    await db.query(`
+        CREATE TABLE IF NOT EXISTS user_card_colors (
+            user_id INT NOT NULL,
+            ticket_id VARCHAR(48) NOT NULL,
+            color CHAR(7) NOT NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (user_id, ticket_id),
+            CONSTRAINT fk_user_card_colors_user FOREIGN KEY (user_id)
+                REFERENCES users(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+} catch (err) {
+    console.error("Erro ao garantir tabela user_card_colors:", err.message);
+}
+
+
 /* ---------------- Sessão ------------------- */
 app.use(session({
     secret: process.env.SESSION_SECRET || "segredo123",
@@ -37,6 +54,8 @@ app.use(express.urlencoded({ extended: true }));
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const MELHORIAS_PATH = path.join(__dirname, "melhorias.json");
+
+const HEX_COLOR_REGEX = /^#[0-9A-Fa-f]{6}$/;
 
 /* ----------------- Login ------------------- */
 app.get("/", (req, res) => {
@@ -81,6 +100,13 @@ app.get("/logout", (req, res) => {
 });
 
 /* ---------------- Middleware ---------------- */
+function requireAuth(req, res, next) {
+    if (!req.session.userId) {
+        return res.status(401).json({ error: "Não autenticado" });
+    }
+    next();
+}
+
 function requireAdmin(req, res, next) {
     if (!req.session.userId || req.session.role !== "admin") {
         return res.status(403).send("Acesso negado");
@@ -100,6 +126,61 @@ app.get("/api/me", async (req, res) => {
     } catch (err) {
         console.error("❌ Erro ao buscar usuário:", err.message);
         res.status(500).json({ error: "Erro interno" });
+    }
+});
+
+/* ------------- Preferências de Card ------------- */
+app.get("/api/card-colors", requireAuth, async (req, res) => {
+    try {
+        const [rows] = await db.query(
+            "SELECT ticket_id, color FROM user_card_colors WHERE user_id = ?",
+            [req.session.userId]
+        );
+        const colors = {};
+        for (const row of rows) {
+            if (row && row.ticket_id && typeof row.color === "string" && HEX_COLOR_REGEX.test(row.color)) {
+                colors[row.ticket_id] = row.color.toLowerCase();
+            }
+        }
+        res.json(colors);
+    } catch (err) {
+        console.error("Erro ao buscar cores personalizadas:", err);
+        res.status(500).json({ error: "Erro ao carregar preferências" });
+    }
+});
+
+app.post("/api/card-colors", requireAuth, async (req, res) => {
+    const userId = req.session.userId;
+    const body = req.body || {};
+    const ticketKey = String(body.ticketId || "").trim();
+    const rawColor = typeof body.color === "string" ? body.color.trim() : "";
+
+    if (!ticketKey) {
+        return res.status(400).json({ error: "Ticket inválido" });
+    }
+
+    const normalizedColor = HEX_COLOR_REGEX.test(rawColor) ? rawColor.toLowerCase() : null;
+
+    try {
+        if (!normalizedColor) {
+            await db.query(
+                "DELETE FROM user_card_colors WHERE user_id = ? AND ticket_id = ?",
+                [userId, ticketKey]
+            );
+            return res.json({ success: true, color: null });
+        }
+
+        await db.query(
+            `INSERT INTO user_card_colors (user_id, ticket_id, color)
+             VALUES (?, ?, ?)
+             ON DUPLICATE KEY UPDATE color = VALUES(color)`,
+            [userId, ticketKey, normalizedColor]
+        );
+
+        res.json({ success: true, color: normalizedColor });
+    } catch (err) {
+        console.error("Erro ao salvar cor personalizada:", err);
+        res.status(500).json({ error: "Erro ao salvar preferências" });
     }
 });
 

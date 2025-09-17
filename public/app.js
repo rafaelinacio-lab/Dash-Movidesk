@@ -9,6 +9,90 @@
         "#eab308","#dc2626","#14b8a6","#64748b","#d946ef","#60a5fa"
     ];
 
+    const DEFAULT_CARD_COLOR = "#2563eb";
+    const HEX_COLOR_REGEX = /^#[0-9A-Fa-f]{6}$/;
+    let userCardColors = {};
+
+    const toTicketKey = (id) => (id == null ? "" : String(id));
+
+    const normalizeHex = (hex) => {
+        if (typeof hex !== "string") return null;
+        const value = hex.trim();
+        return HEX_COLOR_REGEX.test(value) ? value.toLowerCase() : null;
+    };
+
+    const hexToRgb = (hex) => {
+        const value = normalizeHex(hex);
+        if (!value) return { r: 37, g: 99, b: 235 };
+        const clean = value.slice(1);
+        const num = parseInt(clean, 16);
+        if (Number.isNaN(num)) return { r: 37, g: 99, b: 235 };
+        return {
+            r: (num >> 16) & 255,
+            g: (num >> 8) & 255,
+            b: num & 255,
+        };
+    };
+
+    const makeSoftColor = (hex, alpha = 0.18) => {
+        const { r, g, b } = hexToRgb(hex);
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    };
+
+    const applyCardColor = (cardEl, hex) => {
+        if (!cardEl || !cardEl.style) return;
+        const value = normalizeHex(hex);
+        if (value) {
+            cardEl.classList.add("ticket-custom");
+            cardEl.style.setProperty("--ticket-custom-accent", value);
+            cardEl.style.setProperty("--ticket-custom-soft", makeSoftColor(value));
+        } else {
+            cardEl.classList.remove("ticket-custom");
+            cardEl.style.removeProperty("--ticket-custom-accent");
+            cardEl.style.removeProperty("--ticket-custom-soft");
+        }
+    };
+
+    const getCardColor = (ticketId) => userCardColors[toTicketKey(ticketId)] || null;
+
+    const showColorError = (message) => {
+        if (typeof window !== "undefined" && typeof window.alert === "function") {
+            window.alert(message);
+        } else {
+            console.warn(message);
+        }
+    };
+
+    const persistCardColor = async (ticketId, color) => {
+        const key = toTicketKey(ticketId);
+        const payload = { ticketId: key };
+        const normalized = normalizeHex(color);
+        if (normalized) {
+            payload.color = normalized;
+        }
+        try {
+            const resp = await fetch("/api/card-colors", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+            if (!resp.ok) {
+                const message = await resp.text();
+                throw new Error(message || "Falha ao salvar cor personalizada");
+            }
+            const data = await resp.json();
+            if (data && typeof data.color === "string" && normalizeHex(data.color)) {
+                userCardColors[key] = normalizeHex(data.color);
+            } else {
+                delete userCardColors[key];
+            }
+            return data;
+        } catch (err) {
+            console.error("Erro ao persistir cor personalizada:", err);
+            throw err;
+        }
+    };
+
     /* ---------- Helpers ---------- */
     const slug = (s) => (s||"").toString().normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/\s+/g,"");
     const norm = (s) => (s||"").toString().normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
@@ -227,7 +311,6 @@
         const statusSlug = slug(t.status || "nao definido");
         const urgSlug  = slug(t.urgency || "Não definida");
 
-        // Previsão de solução (usa dueCategory do backend)
         let prevSolTxt = "-", prevClass = "gray";
         if (t.previsaoSolucao){
             const due = new Date(t.previsaoSolucao+"T23:59:59");
@@ -239,10 +322,9 @@
         }
 
         const card = document.createElement("div");
-        card.className = "ticket";
+        card.className = "ticket ticket-can-edit-color";
         if (t.overdue) card.style.outline = "2px solid rgba(220,38,38,.45)";
 
-        // Flag especial: Inativação Movidesk
         if (isInativacaoMovidesk(t)) {
             card.classList.add("ticket-flagged");
         }
@@ -259,6 +341,111 @@
       </div>
       <small>Criado em ${t.createdDate ? new Date(t.createdDate).toLocaleDateString() : "-"}</small>
     `;
+
+        const currentColor = getCardColor(t.id);
+        applyCardColor(card, currentColor);
+
+        const actions = document.createElement("div");
+        actions.className = "ticketActions";
+
+        const colorBtn = document.createElement("button");
+        colorBtn.type = "button";
+        colorBtn.className = "ticketColorBtn";
+        colorBtn.title = "Alterar cor do card";
+        colorBtn.setAttribute("aria-label", "Alterar cor do card");
+        colorBtn.innerHTML = '<svg class="ticketColorIcon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 20h4l9.6-9.6a2.2 2.2 0 0 0-3.1-3.1L5 12.8V20z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6"></path><path d="M12.5 6.5l5 5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6"></path></svg>';
+        if (currentColor) {
+            colorBtn.style.setProperty("--ticket-btn-color", currentColor);
+        }
+
+        const colorInput = document.createElement("input");
+        colorInput.type = "color";
+        colorInput.className = "ticketColorInput";
+        colorInput.value = currentColor || DEFAULT_CARD_COLOR;
+
+        const openColorPicker = () => {
+            if (typeof colorInput.showPicker === "function") {
+                colorInput.showPicker();
+            } else {
+                colorInput.click();
+            }
+        };
+
+        colorInput.addEventListener("input", (event) => {
+            const preview = normalizeHex(event.target.value);
+            if (!preview) return;
+            applyCardColor(card, preview);
+            colorBtn.style.setProperty("--ticket-btn-color", preview);
+        });
+
+        colorInput.addEventListener("change", async (event) => {
+            const chosen = normalizeHex(event.target.value);
+            const previous = getCardColor(t.id);
+            if (!chosen) {
+                event.target.value = previous || DEFAULT_CARD_COLOR;
+                return;
+            }
+            if (chosen === previous) {
+                applyCardColor(card, chosen);
+                colorBtn.style.setProperty("--ticket-btn-color", chosen);
+                return;
+            }
+
+            applyCardColor(card, chosen);
+            colorBtn.style.setProperty("--ticket-btn-color", chosen);
+
+            try {
+                const result = await persistCardColor(t.id, chosen);
+                const saved = normalizeHex(result && result.color) || chosen;
+                applyCardColor(card, saved);
+                colorBtn.style.setProperty("--ticket-btn-color", saved);
+                colorInput.value = saved;
+            } catch (err) {
+                console.error("Erro ao salvar cor personalizada:", err);
+                if (previous) {
+                    applyCardColor(card, previous);
+                    colorBtn.style.setProperty("--ticket-btn-color", previous);
+                    colorInput.value = previous;
+                } else {
+                    applyCardColor(card, null);
+                    colorBtn.style.removeProperty("--ticket-btn-color");
+                    colorInput.value = DEFAULT_CARD_COLOR;
+                }
+                showColorError("Não foi possível salvar a cor. Tente novamente.");
+            }
+        });
+
+        const resetBtn = document.createElement("button");
+        resetBtn.type = "button";
+        resetBtn.className = "ticketColorReset";
+        resetBtn.title = "Remover cor personalizada";
+
+        resetBtn.addEventListener("click", async () => {
+            const previous = getCardColor(t.id);
+            applyCardColor(card, null);
+            colorBtn.style.removeProperty("--ticket-btn-color");
+            colorInput.value = DEFAULT_CARD_COLOR;
+            try {
+                await persistCardColor(t.id, null);
+            } catch (err) {
+                console.error("Erro ao remover cor personalizada:", err);
+                if (previous) {
+                    applyCardColor(card, previous);
+                    colorBtn.style.setProperty("--ticket-btn-color", previous);
+                    colorInput.value = previous;
+                }
+                showColorError("Não foi possível remover a cor. Tente novamente.");
+            }
+        });
+
+        colorBtn.addEventListener("click", (event) => {
+            event.stopPropagation();
+            openColorPicker();
+        });
+
+        actions.append(colorBtn, resetBtn, colorInput);
+        card.appendChild(actions);
+
         return card;
     };
 
@@ -305,15 +492,46 @@
     /* ---------- Carga principal ---------- */
     const carregarDashboard = async () => {
         let dados;
-        try{
-            const resp = await fetch("/api/tickets");
-            dados = await resp.json();
-        }catch(e){
+        try {
+            const [ticketsResp, colorsResp] = await Promise.all([
+                fetch("/api/tickets"),
+                fetch("/api/card-colors"),
+            ]);
+
+            if (!ticketsResp.ok) {
+                throw new Error(`Falha ao buscar tickets: ${ticketsResp.status}`);
+            }
+
+            dados = await ticketsResp.json();
+
+            if (colorsResp.ok) {
+                try {
+                    const raw = await colorsResp.json();
+                    if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+                        userCardColors = Object.fromEntries(
+                            Object.entries(raw)
+                                .map(([ticketId, value]) => {
+                                    const normalized = normalizeHex(value);
+                                    return normalized ? [toTicketKey(ticketId), normalized] : null;
+                                })
+                                .filter(Boolean)
+                        );
+                    } else {
+                        userCardColors = {};
+                    }
+                } catch (err) {
+                    userCardColors = {};
+                }
+            } else if (colorsResp.status === 401) {
+                userCardColors = {};
+            }
+        } catch (e) {
             console.error("Erro ao buscar /api/tickets:", e);
-            const { msg } = ensureDonutHolders(); if (msg) msg.textContent="Erro ao buscar dados."; renderLegend({});
-            const ag = ensureDonutHoldersAgents(); if (ag.msg) ag.msg.textContent="Erro ao buscar dados."; renderLegendAgents({});
+            const { msg } = ensureDonutHolders(); if (msg) msg.textContent = "Erro ao buscar dados."; renderLegend({});
+            const ag = ensureDonutHoldersAgents(); if (ag.msg) ag.msg.textContent = "Erro ao buscar dados."; renderLegendAgents({});
             return;
         }
+
 
         /* Widgets */
         // ✅ Agora usa a métrica correta do backend: criados do 1º dia do mês até hoje
