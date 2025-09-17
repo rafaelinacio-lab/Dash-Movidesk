@@ -1,4 +1,4 @@
-(() => {
+﻿(() => {
     /* ---------- Paletas ---------- */
     const urgencyColors = {
         "Crítica":"#ef4444","Alta":"#f97316","Média":"#3b82f6","Baixa":"#6b7280","Não definida":"#9ca3af"
@@ -13,8 +13,21 @@
     const slug = (s) => (s||"").toString().normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/\s+/g,"");
     const norm = (s) => (s||"").toString().normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
     const isCanceled = (t) => t.baseStatus==="Canceled" || t.baseStatus==="Cancelled" || String(t.status||"").toLowerCase().includes("cancelad");
-    const isInativacao = (t) => norm(`${t.subject} ${t.status}`).includes("inativacao");
-
+    const isInativacaoMovidesk = (ticket) => {
+        if (!ticket) return false;
+        const parts = [
+            ticket.subject,
+            ticket.status,
+            ticket.statusDetalhado,
+            ticket.statusDetailed,
+            ticket.category,
+            ticket.theme,
+            ticket.description
+        ];
+        if (Array.isArray(ticket.tags)) { parts.push(ticket.tags.join(' ')); }
+        const texto = norm(parts.filter(Boolean).join(' '));
+        return texto.includes('inativacao') && texto.includes('movidesk');
+    };
     /* ---------- POPUP: Inativação Movidesk ---------- */
     let seenAlertIds = new Set();
     const showAlert = (title, message) => {
@@ -43,8 +56,7 @@
 
     const watchInativacao = (tickets) => {
         tickets.forEach(t => {
-            const txt = `${t.subject} ${t.status}`.toString();
-            if (norm(txt).includes("inativacao movidesk") && !seenAlertIds.has(t.id)) {
+            if (isInativacaoMovidesk(t) && !seenAlertIds.has(t.id)) {
                 seenAlertIds.add(t.id);
                 showAlert("Atenção: Inativação Movidesk",
                     `Ticket #${t.id} identificado com assunto/status de Inativação Movidesk.`);
@@ -231,9 +243,9 @@
         if (t.overdue) card.style.outline = "2px solid rgba(220,38,38,.45)";
 
         // Flag especial: Inativação Movidesk
-        const txt = `${t.subject} ${t.status}`;
-        const flagged = norm(txt).includes("inativacao");
-        if (flagged) card.classList.add("ticket-flagged");
+        if (isInativacaoMovidesk(t)) {
+            card.classList.add("ticket-flagged");
+        }
 
         card.innerHTML = `
       <h4>#${t.id} - ${t.subject}</h4>
@@ -247,22 +259,6 @@
       </div>
       <small>Criado em ${t.createdDate ? new Date(t.createdDate).toLocaleDateString() : "-"}</small>
     `;
-        // Ajuste visual inline para garantir card 100% vermelho
-        if (flagged) {
-            try{
-                card.style.background = "#dc2626";
-                card.style.color = "#fff";
-                card.style.borderColor = "#b91c1c";
-                card.querySelectorAll('h4, p, small, .badge, .pill, .statusDetalhado, .badgePrev, .descricaoCompleta, .responsavelBox')
-                    .forEach(el=>{
-                        if (el.matches('.badge, .pill, .statusDetalhado, .badgePrev, .descricaoCompleta, .responsavelBox')) {
-                            el.style.background = 'transparent';
-                            el.style.borderColor = 'rgba(255,255,255,0.45)';
-                        }
-                        el.style.color = '#fff';
-                    });
-            }catch(_){ }
-        }
         return card;
     };
 
@@ -285,7 +281,13 @@
             list.innerHTML="";
             const total=colData[key].length;
             const showN=Math.min(visibleCount[key], total);
-            colData[key].slice(0,showN).forEach(t=>list.appendChild(buildTicketCard(t)));
+            const ordered = colData[key].slice().sort((a,b)=>{
+                const aFlag = isInativacaoMovidesk(a);
+                const bFlag = isInativacaoMovidesk(b);
+                if (aFlag === bFlag) return 0;
+                return aFlag ? -1 : 1;
+            });
+            ordered.slice(0,showN).forEach(t=>list.appendChild(buildTicketCard(t)));
             if (btn) btn.style.display = total > showN ? "block" : "none";
         });
     };
@@ -335,17 +337,14 @@
         colData.novos = []; colData.atendimento = []; colData.parados = []; colData.vencidos = [];
         visibleCount.novos = visibleCount.atendimento = visibleCount.parados = visibleCount.vencidos = PAGE;
 
-        // Distribui tickets (ignora fechados/resolvidos/cancelados) e prioriza "inativacao" no topo
+        // Distribui tickets (ignora fechados/resolvidos/cancelados)
         (dados.tickets||[]).forEach(t=>{
             const closed = (t.baseStatus==="Closed" || t.baseStatus==="Resolved");
             if (closed || isCanceled(t)) return;
-            let arr = null;
-            if (t.overdue) arr = colData.vencidos;
-            else if (t.baseStatus==="New") arr = colData.novos;
-            else if (t.baseStatus==="InAttendance") arr = colData.atendimento;
-            else if (t.baseStatus==="Stopped") arr = colData.parados;
-            if (!arr) return;
-            if (isInativacao(t)) arr.unshift(t); else arr.push(t);
+            if (t.overdue) colData.vencidos.push(t);
+            else if (t.baseStatus==="New") colData.novos.push(t);
+            else if (t.baseStatus==="InAttendance") colData.atendimento.push(t);
+            else if (t.baseStatus==="Stopped") colData.parados.push(t);
         });
 
         renderColumns();
