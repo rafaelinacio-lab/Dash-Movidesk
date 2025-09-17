@@ -22,5 +22,21 @@
     "data": "2025-09-01T20:10:46.948Z",
     "status": "Rejeitada",
     "id": "299fiava"
+  },
+  {
+    "titulo": "Mudar Cor do Card",
+    "descricao": "Mudar manualmente a cor do card de acordo com necessidad.",
+    "autor": "rafael.inacio",
+    "data": "2025-09-17T20:21:19.175Z",
+    "status": "Implementada",
+    "id": "y7pf02ag"
+  },
+  {
+    "titulo": "Mudar ordem do card",
+    "descricao": "Mudar ordem do card manualmente de acordo com a necessidade em cada coluna, arrastando o card pra posição desejada. ",
+    "autor": "rafael.inacio",
+    "data": "2025-09-17T20:22:03.500Z",
+    "status": "Em Análise",
+    "id": "a5n06i5p"
   }
 ]
