@@ -72,7 +72,7 @@ const VALID_ORDER_COLUMNS = new Set(["novos", "atendimento", "parados", "vencido
 /* ----------------- Login ------------------- */
 app.get("/", (req, res) => {
     if (!req.session.userId) {
-        return res.sendFile(path.join(__dirname, "\public\login.html"));
+        return res.sendFile(path.join(__dirname, "public/login.html"));
     }
     res.redirect("/dashboard");
 });
@@ -104,7 +104,7 @@ app.post("/login", async (req, res) => {
 
 app.get("/dashboard", (req, res) => {
     if (!req.session.userId) return res.redirect("/");
-    res.sendFile(path.join(__dirname, "/index.html"));
+    res.sendFile(path.join(__dirname, "public","index.html"));
 });
 
 app.get("/logout", (req, res) => {
