@@ -1115,3 +1115,59 @@ body.dark { background: #111827; color: #f3f4f6; }
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
 }
+/* ===== Modal de Busca de Ticket ===== */
+#searchModal .modalBox {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 22px;
+  border: 1px solid rgba(255,255,255,0.25);
+  border-top: 1.2px solid rgba(255,255,255,0.45);
+  border-left: 1.2px solid rgba(255,255,255,0.45);
+  backdrop-filter: blur(18px) saturate(180%);
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  color: #fff;
+  text-align: left;
+  padding: 24px 28px;
+  max-width: 620px;
+}
+
+#searchResult h4 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+#searchResult p {
+  margin: 4px 0;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+#searchResult hr {
+  margin: 16px 0;
+  border: none;
+  border-top: 1px solid rgba(255,255,255,0.25);
+}
+
+#searchResult .action {
+  margin-bottom: 14px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.18);
+  box-shadow: inset 0 1px 1px rgba(255,255,255,0.2);
+}
+
+#searchResult .action p {
+  font-size: 13px;
+  margin: 2px 0;
+}
+
+#searchResult .action div {
+  margin-top: 4px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(0,0,0,0.25);
+  font-size: 13px;
+  white-space: pre-line;
+}

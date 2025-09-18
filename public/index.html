@@ -15,6 +15,10 @@
              Tickets <span> Movidesk</span>
         </h1>
         <div class="acoes">
+            <div class="search-bubble">
+                <input type="text" id="ticketId" placeholder="Buscar ticket por ID">
+                <button id="searchBtn" class="btnGhost sm">🔍</button>
+            </div>
             <div class="notif">
                 <button id="notifBtn" class="btnGhost sm" aria-label="Notificações">
                     🔔
@@ -1450,6 +1454,17 @@
   window.__updateOwnerOptionsFromTickets = upd;
 })();
 </script>
+<!-- Modal de busca de ticket -->
+<div id="searchModal" class="modalOverlay" aria-hidden="true">
+    <div class="modalBox" role="dialog" aria-modal="true" aria-labelledby="searchModalTitle">
+        <h3 id="searchModalTitle">Resultado da Busca</h3>
+        <div id="searchResult"></div>
+        <div class="modalActions">
+            <button id="closeSearchModal" class="btnGhost">Fechar</button>
+        </div>
+    </div>
+</div>
+
 <script>
     (async () => {
         try {
@@ -1472,7 +1487,59 @@
             console.error("Erro ao checar permissões:", err);
         }
     })();
+
+    const searchBtn = document.getElementById("searchBtn");
+    const closeSearchModal = document.getElementById("closeSearchModal");
+    const searchModal = document.getElementById("searchModal");
+    const searchResult = document.getElementById("searchResult");
+
+    searchBtn.addEventListener("click", async () => {
+        const ticketId = document.getElementById("ticketId").value;
+        if (!ticketId) {
+            alert("Por favor, insira um ID de ticket.");
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/ticket/${ticketId}`);
+            if (response.ok) {
+                const ticket = await response.json();
+                searchResult.innerHTML = `
+                    <h4>#${ticket.id} - ${ticket.subject}</h4>
+                    <p><b>Status:</b> ${ticket.status}</p>
+                    <p><b>Solicitante:</b> ${ticket.requester}</p>
+                    <p><b>Responsável:</b> ${ticket.owner}</p>
+                    <p><b>Equipe:</b> ${ticket.ownerTeam}</p>
+                    <p><b>Data de Criação:</b> ${new Date(ticket.createdDate).toLocaleDateString()}</p>
+                    <hr>
+                    <h5>Ações do Ticket</h5>
+                    <div>
+                        ${ticket.actions.map(action => `
+                            <div class="action">
+                                <p><b>Data:</b> ${new Date(action.createdDate).toLocaleString()}</p>
+                                <p><b>Autor:</b> ${action.createdBy}</p>
+                                <p><b>Descrição:</b></p>
+                                <div>${action.description}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                searchModal.classList.add("show");
+            } else {
+                alert("Ticket não encontrado.");
+            }
+        } catch (error) {
+            console.error("Erro ao buscar ticket:", error);
+            alert("Erro ao buscar ticket.");
+        }
+    });
+
+    closeSearchModal.addEventListener("click", () => {
+        searchModal.classList.remove("show");
+    });
 </script>
+</body>
+</html>
 </body>
 </html>
 

@@ -151,6 +151,43 @@ app.get("/api/me", async (req, res) => {
     }
 });
 
+app.get("/api/ticket/:id", requireAuth, async (req, res) => {
+    const { id } = req.params;
+    try {
+        const url = `${MOVI_URL}?token=${MOVI_TOKEN}&$select=id,subject,status,owner,ownerTeam,createdDate,customFieldValues,clients,actions&$expand=owner($select=id,businessName),clients($select=id,businessName),actions($expand=createdBy($select=businessName))&$filter=id eq ${id}`;
+        const { data } = await axios.get(url, { timeout: 15000 });
+        if (data.length === 0) {
+            return res.status(404).json({ error: "Ticket não encontrado" });
+        }
+        const ticket = data[0];
+        const owner = ticket.owner ? ticket.owner.businessName : "Não atribuído";
+        const ownerTeam = ticket.ownerTeam || "Não definido";
+        const createdDate = ticket.createdDate;
+        const subject = ticket.subject;
+        const status = ticket.status;
+        const requester = ticket.clients && ticket.clients.length > 0 ? ticket.clients[0].businessName : "Não informado";
+        const actions = ticket.actions ? ticket.actions.map(action => ({
+            description: action.description,
+            createdBy: action.createdBy.businessName,
+            createdDate: action.createdDate
+        })) : [];
+
+        res.json({
+            id: ticket.id,
+            subject,
+            status,
+            owner,
+            ownerTeam,
+            createdDate,
+            requester,
+            actions
+        });
+    } catch (err) {
+        console.error(`Erro ao buscar ticket ${id}:`, err.message);
+        res.status(404).json({ error: "Ticket não encontrado" });
+    }
+});
+
 /* ------------- Preferências de Card ------------- */
 app.get("/api/card-colors", requireAuth, async (req, res) => {
     try {
