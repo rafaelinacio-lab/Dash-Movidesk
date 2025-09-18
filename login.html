@@ -5,17 +5,10 @@
     <title>Login • Movidesk - Sistemas Internos</title>
     <link href="public/style.css" rel="stylesheet" />
     <style>
-        @keyframes gradient {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-        }
         body {
-            background: linear-gradient(-45deg, #23a6d5, #23d5ab, #ee7752, #e73c7e);
-            background-size: 400% 400%;
-            animation: gradient 15s ease infinite;
+            background: #0f172a;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            color: #fff;
+            color: #e2e8f0;
         }
         .loginWrap {
             min-height: 100vh;
@@ -26,7 +19,7 @@
         }
         .loginCard {
             width: min(400px, 95vw);
-            background: rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.08);
             border-radius: 24px;
             padding: 32px;
             border: 1px solid rgba(255, 255, 255, 0.2);
@@ -46,6 +39,7 @@
         .loginCard h1 img {
             height: 40px;
             width: auto;
+            filter: grayscale(100%) brightness(300%) sepia(100%) hue-rotate(-50deg) saturate(600%) contrast(0.8);
         }
         .loginCard label {
             display: none;
@@ -55,14 +49,14 @@
             padding: 14px 20px;
             border: 1px solid rgba(255, 255, 255, 0.4);
             border-radius: 12px;
-            background: rgba(255, 255, 255, 0.2);
-            color: #fff;
+            background: rgba(255, 255, 255, 0.12);
+            color: #e2e8f0;
             box-sizing: border-box;
             margin-bottom: 16px;
             font-size: 16px;
         }
         .loginCard input::placeholder {
-            color: rgba(255, 255, 255, 0.8);
+            color: rgba(226, 232, 240, 0.8);
         }
         .loginActions {
             display: flex;
@@ -81,11 +75,11 @@
             transition: all 0.2s ease;
         }
         .btnPrimary {
-            background: #fff;
-            color: #2563eb;
+            background: linear-gradient(#3b82f6, #2563eb);
+            color: #fff;
         }
         .btnPrimary:hover {
-            background: #f0f0f0;
+            background: #1d4ed8;
         }
         .muted {
             font-size: 13px;

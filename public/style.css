@@ -1,14 +1,56 @@
-﻿/* ===== Layout base ===== */
+/* ===== Layout base ===== */
+:root {
+    --app-gradient-start: #6fa0ff;
+    --app-gradient-mid: #4f86ff;
+    --app-gradient-end: #63d0ff;
+    --surface-glass: rgba(246, 249, 255, 0.92);
+    --surface-glass-soft: rgba(239, 244, 255, 0.88);
+    --surface-border: rgba(88, 133, 255, 0.24);
+    --surface-border-strong: rgba(72, 118, 255, 0.34);
+    --surface-shadow: 0 26px 62px -34px rgba(30, 64, 175, 0.48);
+    --text-primary: #0f172a;
+}
+
 body {
     font-family: Arial, sans-serif;
-    background: #f3f4f6;
     margin: 0;
     padding: 0;
-    transition: background 0.3s, color 0.3s;
+    color: var(--text-primary);
+    background:
+        radial-gradient(circle at 15% 16%, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0) 44%),
+        radial-gradient(circle at 86% 18%, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0) 46%),
+        linear-gradient(135deg, var(--app-gradient-start) 0%, var(--app-gradient-mid) 48%, var(--app-gradient-end) 100%);
+    background-size: 160% 160%;
+    background-attachment: fixed;
+    animation: gradientMove 18s ease infinite;
+    transition: background 0.45s ease, color 0.3s ease;
 }
-body.dark { background: #111827; color: #f3f4f6; }
 
-.container { width: min(1920px, 96vw); margin: 0 auto; padding: .acoes .btnGhost.sm .icon { font-size: 22px; line-height: 1; }.20px 24px; }
+body.dark {
+    background: linear-gradient(135deg, #0f172a 0%, #111827 55%, #020617 100%);
+    color: #f3f4f6;
+    animation: none;
+    --text-primary: #f3f4f6;
+}
+
+.container {
+    width: min(1920px, 96vw);
+    margin: 0 auto;
+    padding: 22px 28px;
+    background: linear-gradient(deg, rgba(81, 68, 68, 0.848) 0%, rgba(78, 97, 104, 0.64) 100%);
+    border-radius: 24px;
+    border: 1px solid var(--surface-border);
+    box-shadow: 0 22px 58px -34px rgba(30, 64, 175, 0.32);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+}
+
+body.dark .container {
+    background: linear-gradient(135deg, rgba(17, 25, 40, 0.92) 0%, rgba(17, 24, 39, 0.7) 100%);
+    border-color: rgba(30, 41, 59, 0.62);
+    box-shadow: none;
+}
+
 
 /* ===== Cabeçalho ===== */
 header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
@@ -369,82 +411,95 @@ body.dark .btnInativar:hover, body.dark .btnExcluir:hover {
 /* ===== Widgets (cards do topo) ===== */
 .cards { display: flex; gap: 15px; margin-bottom: 12px; }
 .cardWidget {
-    --accent: rgba(37,99,235,0.28);
+    --accent: rgba(37,99,235,0.24);
     --accent-solid: #2563eb;
-    --text-color: #0f172a;
+    --text-color: var(--text-primary);
     flex: 1;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 10px;
-    padding: 16px 20px;
-    border-radius: 30px;
+    gap: 12px;
+    padding: 18px 22px;
+    border-radius: 26px;
     position: relative;
     overflow: hidden;
     color: var(--text-color);
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0));
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    transition: transform 0.2s ease-in-out;
+    background: linear-gradient(140deg, rgba(255,255,255,0.93) 0%, var(--accent) 100%);
+    border: 1px solid rgba(255,255,255,0.55);
+    box-shadow: 0 18px 42px -24px var(--accent-shadow, rgba(30, 58, 138, 0.32));
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 .cardWidget:hover {
-    transform: translateY(-5px);
+    transform: translateY(-8px);
+    box-shadow: 0 30px 58px -26px var(--accent-shadow, rgba(30, 58, 138, 0.35));
 }
 .cardInfo h3 { font-size: 14px; margin-bottom: 5px; }
 .cardInfo p { font-size: 20px; font-weight: bold; margin: 0; }
 .cardWidget::before {
     content: "";
     position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 100%);
-    transform: rotate(45deg);
+    inset: -42% auto auto -46%;
+    width: 125%;
+    height: 125%;
+    background:
+        radial-gradient(circle at top left, rgba(255,255,255,0.85) 0%, transparent 72%),
+        radial-gradient(circle at top left, var(--accent) 0%, transparent 78%);
+    opacity: 0.85;
     pointer-events: none;
+    mix-blend-mode: screen;
 }
 .cardWidget::after {
     content: "";
     position: absolute;
-    bottom: -50%;
-    right: -50%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(to top, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 100%);
-    transform: rotate(45deg);
+    inset: auto -44% -52% auto;
+    width: 120%;
+    height: 120%;
+    background:
+        radial-gradient(circle at bottom right, rgba(255,255,255,0.7) 0%, transparent 70%),
+        radial-gradient(circle at bottom right, var(--accent) 0%, transparent 78%);
+    opacity: 0.78;
     pointer-events: none;
+    mix-blend-mode: screen;
 }
+.cardWidget > * {
+    position: relative;
+    z-index: 1;
+}
+
 body.dark .cardWidget {
     background: linear-gradient(135deg, rgba(15,23,42,0.85) 0%, rgba(17,25,40,0.6) 100%);
     border: 1px solid rgba(148,163,184,0.32);
     box-shadow: 0 32px 70px -28px rgba(2,6,23,0.9);
     color: var(--text-color);
 }
-.cardWidget.azul    { --accent: rgba(37,99,235,0.32); --accent-solid:#2563eb; --text-color:#0f172a; }
-.cardWidget.verde   { --accent: rgba(34,197,94,0.32); --accent-solid:#16a34a; --text-color:#064e3b; }
-.cardWidget.laranja { --accent: rgba(249,115,22,0.32); --accent-solid:#f97316; --text-color:#9a3412; }
-.cardWidget.vermelho{ --accent: rgba(248,113,113,0.32); --accent-solid:#dc2626; --text-color:#7f1d1d; }
-.cardWidget.cinza   { --accent: rgba(99,102,241,0.15); --accent-solid:#6b7280; --text-color:#1f2937; }
-.cardWidget.roxo    { --accent: rgba(168,85,247,0.32); --accent-solid:#7c3aed; --text-color:#4c1d95; }
-body.dark .cardWidget.azul    { --accent: rgba(37,99,235,0.22); --accent-solid:#3b82f6; --text-color:#dbeafe; }
-body.dark .cardWidget.verde   { --accent: rgba(34,197,94,0.22); --accent-solid:#22c55e; --text-color:#bbf7d0; }
-body.dark .cardWidget.laranja { --accent: rgba(249,115,22,0.22); --accent-solid:#fb923c; --text-color:#fed7aa; }
-body.dark .cardWidget.vermelho{ --accent: rgba(248,113,113,0.22); --accent-solid:#f87171; --text-color:#fecaca; }
-body.dark .cardWidget.cinza   { --accent: rgba(148,163,184,0.2); --accent-solid:#9ca3af; --text-color:#f9fafb; }
-body.dark .cardWidget.roxo    { --accent: rgba(168,85,247,0.22); --accent-solid:#a855f7; --text-color:#ede9fe; }
+.cardWidget.azul    { --accent: rgba(37,99,235,0.3); --accent-solid:#2563eb; --accent-shadow: rgba(37,99,235,0.5); --text-color:#0f172a; }
+.cardWidget.verde   { --accent: rgba(34,197,94,0.28); --accent-solid:#16a34a; --accent-shadow: rgba(34,197,94,0.46); --text-color:#064e3b; }
+.cardWidget.laranja { --accent: rgba(249,115,22,0.32); --accent-solid:#f97316; --accent-shadow: rgba(249,115,22,0.5); --text-color:#9a3412; }
+.cardWidget.vermelho{ --accent: rgba(248,113,113,0.32); --accent-solid:#dc2626; --accent-shadow: rgba(248,113,113,0.5); --text-color:#7f1d1d; }
+.cardWidget.cinza   { --accent: rgba(99,102,241,0.24); --accent-solid:#6b7280; --accent-shadow: rgba(99,102,241,0.4); --text-color:#1f2937; }
+.cardWidget.roxo    { --accent: rgba(168,85,247,0.3); --accent-solid:#7c3aed; --accent-shadow: rgba(168,85,247,0.48); --text-color:#4c1d95; }
+body.dark .cardWidget.azul    { --accent: rgba(37,99,235,0.26); --accent-solid:#3b82f6; --accent-shadow: rgba(37,99,235,0.42); --text-color:#dbeafe; }
+body.dark .cardWidget.verde   { --accent: rgba(34,197,94,0.26); --accent-solid:#22c55e; --accent-shadow: rgba(34,197,94,0.4); --text-color:#bbf7d0; }
+body.dark .cardWidget.laranja { --accent: rgba(249,115,22,0.28); --accent-solid:#fb923c; --accent-shadow: rgba(249,115,22,0.44); --text-color:#fed7aa; }
+body.dark .cardWidget.vermelho{ --accent: rgba(248,113,113,0.28); --accent-solid:#f87171; --accent-shadow: rgba(248,113,113,0.44); --text-color:#fecaca; }
+body.dark .cardWidget.cinza   { --accent: rgba(148,163,184,0.28); --accent-solid:#9ca3af; --accent-shadow: rgba(148,163,184,0.42); --text-color:#f9fafb; }
+body.dark .cardWidget.roxo    { --accent: rgba(168,85,247,0.28); --accent-solid:#a855f7; --accent-shadow: rgba(168,85,247,0.42); --text-color:#ede9fe; }
 .iconBox {
-    width: 38px; height: 38px; border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 18px; color: #fff; z-index: 1;
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: #fff;
+    z-index: 1;
+    border: 1px solid rgba(255,255,255,0.35);
+    background: linear-gradient(135deg, var(--accent-solid), rgba(255,255,255,0.4));
+    box-shadow: 0 14px 28px -18px var(--accent-shadow, rgba(15,23,42,0.28));
 }
-.cardWidget.azul .iconBox     { background: #2563eb; }
-.cardWidget.verde .iconBox    { background: #16a34a; }
-.cardWidget.laranja .iconBox  { background: #f59e0b; }
-.cardWidget.vermelho .iconBox { background: #dc2626; }
-.cardWidget.cinza .iconBox    { background: #6b7280; }
-.cardWidget.roxo .iconBox     { background: #7c3aed; }
 
 /* ===== Kanban, Tickets, Gráficos, Login, Footer, Botão Ver mais ===== */
 /* (mantém igual ao que você já tinha, sem alterações) */
@@ -452,8 +507,14 @@ body.dark .cardWidget.roxo    { --accent: rgba(168,85,247,0.22); --accent-solid:
 /* ===== Kanban ===== */
 .kanban { display: flex; gap: 15px; align-items: flex-start; }
 .coluna {
-    flex: 1; background: #f9fafb; border-radius: 12px; padding: 15px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    flex: 1;
+    background: linear-gradient(150deg, rgba(255,255,255,0.94) 0%, rgba(229,239,255,0.78) 100%);
+    border-radius: 18px;
+    padding: 20px;
+    border: 1px solid rgba(255,255,255,0.52);
+    box-shadow: 0 18px 48px -28px rgba(46, 85, 170, 0.28);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
 }
 .coluna h3 { font-size: 14px; font-weight: bold; margin-bottom: 10px; padding: 6px 10px; border-radius: 6px; display: inline-block; }
 
@@ -465,7 +526,11 @@ body.dark .cardWidget.roxo    { --accent: rgba(168,85,247,0.22); --accent-solid:
 .coluna.vencidoClaro   h3 { background: #ffe4e6; color: #e11d48; }
 
 /* Colunas - tema escuro */
-body.dark .coluna { background: #1f2937; }
+body.dark .coluna {
+    background: rgba(17,24,39,0.82);
+    border: 1px solid rgba(30,41,59,0.65);
+    box-shadow: none;
+}
 body.dark .coluna.amarelo       h3 { background: #92400e; color: #fef3c7; }
 body.dark .coluna.azulClaro     h3 { background: #1e3a8a; color: #dbeafe; }
 body.dark .coluna.vermelhoClaro h3 { background: #7f1d1d; color: #fee2e2; }
@@ -475,9 +540,9 @@ body.dark .coluna.vencidoClaro  h3 { background: #7f1d1d; color: #fecaca; }
 /* ===== Ticket ===== */
 .ticket {
     position: relative; overflow: hidden;
-    background: linear-gradient(135deg, rgba(255,255,255,0.78) 0%, rgba(255,255,255,0.45) 100%);
+    background: linear-gradient(150deg, rgba(255,255,255,0.94) 0%, rgba(233,241,255,0.7) 100%);
     border-radius: 22px; padding: 22px 24px 72px 24px; margin-bottom: 20px;
-    box-shadow: 0 24px 48px -20px rgba(15,23,42,0.42); color: #0f172a; border: 1px solid rgba(255,255,255,0.55);
+    box-shadow: 0 22px 46px -22px rgba(46, 85, 170, 0.3); color: #0f172a; border: 1px solid rgba(255,255,255,0.62);
     text-align: left; line-height: 1.5; font-size: 14px; min-height: 180px;
     backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
 }
@@ -955,108 +1020,155 @@ body.dark .btnMore:hover {
   100% { background-position: 0% 50%; }
 }
 
-body {
-  font-family: Arial, sans-serif;
-  margin: 0;
-  padding: 0;
-  background: linear-gradient(-45deg, #d42cb3, #563ce7, #23a6d5, #23d5ab);
-  background-size: 400% 400%;
-  animation: gradientMove 15s ease infinite;
-  transition: background 0.3s, color 0.3s;
-}
-
-body.dark { background: #111827; color: #f3f4f6; }
 
 /* ==== Container de login ==== */
-.loginWrap {
+body.loginPage {
+  background:
+    radial-gradient(circle at 18% 18%, rgba(37,99,235,0.18) 0%, rgba(15,23,42,0) 48%),
+    linear-gradient(135deg, #0f172a 0%, #0b1221 100%);
+  color: #e2e8f0;
   min-height: 100vh;
+}
+
+.loginWrap {
+  position: relative;
+  min-height: 100vh;
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: 48px 24px;
 }
 
-/* ==== Card estilo Liquid Glass Apple ==== */
+.loginWrap::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 70% 80%, rgba(148,163,184,0.18) 0%, rgba(15,23,42,0) 62%);
+  filter: blur(70px);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* ==== Card estilo Glass escuro ==== */
 .loginCard {
-  width: min(450px, 96vw);
-  padding: 28px 26px;
+  position: relative;
+  width: min(460px, 96vw);
+  padding: 42px 36px;
   border-radius: 24px;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-top: 1.2px solid rgba(255, 255, 255, 0.45);
-  border-left: 1.2px solid rgba(255, 255, 255, 0.45);
-  backdrop-filter: blur(18px) saturate(180%);
-  -webkit-backdrop-filter: blur(18px) saturate(180%);
-  box-shadow:
-    inset 0 1px 1px rgba(255,255,255,0.4),
-    inset 0 -1px 1px rgba(0,0,0,0.1),
-    0 8px 32px rgba(0,0,0,0.4);
-  color: #000000;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(226,232,240,0.12);
+  box-shadow: 0 28px 56px -30px rgba(4,9,20,0.85);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  color: #e2e8f0;
+  overflow: hidden;
+}
+
+.loginCard::before {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border-radius: 18px;
+  border: 1px solid rgba(226,232,240,0.16);
+  background: linear-gradient(145deg, rgba(255,255,255,0.08), rgba(148,163,184,0.06));
+  pointer-events: none;
+}
+
+.loginLogo {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 18px;
+  height: 46px;
+}
+
+.loginLogo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #f87171 0%, #f472b6 45%, #60a5fa 100%);
+  mask: url('/logo-viasoft.png') center/contain no-repeat;
+  -webkit-mask: url('/logo-viasoft.png') center/contain no-repeat;
+}
+
+.loginLogo img {
+  width: 140px;
+  opacity: 0;
 }
 
 .loginCard h1 {
-  margin: 0 0 18px;
-  font-size: 20px;
+  margin: 0 0 24px;
+  font-size: 22px;
   font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 12px;
+  text-align: center;
+  letter-spacing: 0.08em;
+  color: #e2e8f0;
 }
 
 .loginCard label {
   display: block;
-  font-size: 20px;
-  margin: 10px 0 6px;
-  opacity: .85;
+  font-size: 18px;
+  font-weight: 500;
+  margin: 18px 0 8px;
+  color: #e2e8f0;
 }
 
 .loginCard input {
   width: 100%;
-  padding: 14px 16px;
-  font-size: 15px;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  background: rgba(255, 255, 255, 0.15);
-  color: #fff;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  transition: all 0.2s ease;
+  padding: 14px 18px;
+  font-size: 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(226,232,240,0.22);
+  background: rgba(255,255,255,0.12);
+  color: #e2e8f0;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.22);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
 }
 
 .loginCard input:focus {
   outline: none;
-  border-color: rgba(255,255,255,0.7);
-  background: rgba(255,255,255,0.25);
-  box-shadow: 0 0 8px rgba(255,255,255,0.4);
+  border-color: rgba(148,197,255,0.5);
+  background: rgba(255,255,255,0.18);
+  box-shadow: 0 0 0 2px rgba(59,130,246,0.22), inset 0 1px 0 rgba(255,255,255,0.28);
 }
 
 .loginCard input::placeholder {
-  color: rgba(255, 255, 255, 0.75);
+  color: rgba(226,232,240,0.55);
 }
 
 .loginActions {
+  margin-top: 28px;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 10px;
-  margin-top: 16px;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.loginActions .muted {
+  font-size: 14px;
+  color: rgba(226,232,240,0.6);
 }
 
 .btnPrimary {
   position: relative;
-  background: linear-gradient(145deg, #3b82f6, #2563eb);
-  border: 1px solid rgba(255,255,255,0.25);
-  border-radius: 12px;
-  padding: 12px 18px;
+  background: linear-gradient(160deg, #3b82f6 0%, #2563eb 100%);
+  border: 1px solid rgba(148,197,255,0.35);
+  border-radius: 16px;
+  padding: 12px 38px;
   font-weight: 600;
-  font-size: 15px;
+  font-size: 16px;
   color: #fff;
   cursor: pointer;
   transition: all 0.25s ease;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+  box-shadow: 0 14px 34px -14px rgba(37,99,235,0.6);
 }
+
 .btnPrimary:hover {
-  background: linear-gradient(145deg, #2563eb, #1d4ed8);
+  background: linear-gradient(160deg, #2563eb 0%, #1d4ed8 100%);
+  box-shadow: 0 16px 38px -14px rgba(29,78,216,0.7);
 }
 
 /* Spinner dentro do botão */
@@ -1064,56 +1176,26 @@ body.dark { background: #111827; color: #f3f4f6; }
   color: transparent !important;
   pointer-events: none;
 }
+
 .btnPrimary.loading::after {
   content: "";
   position: absolute;
   top: 50%; left: 50%;
   width: 18px; height: 18px;
   margin: -9px 0 0 -9px;
-  border: 2px solid rgba(255,255,255,0.6);
-  border-top-color: #fff;
   border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.4);
+  border-top-color: rgba(255,255,255,0.1);
   animation: spin 0.8s linear infinite;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
 
-.muted {
-  font-size: 12px;
-  opacity: .8;
-}
-/* Logo dentro do card */
-.loginLogo {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 16px;
-}
-.loginLogo img {
-  height: 100px;
-  max-width: 250px;
-  object-fit: contain;
+body.loginPage .appFooter {
+  color: rgba(226,232,240,0.6);
 }
 
-/* Ajustar título */
-.loginCard h1 {
-  text-align: center;
-  font-size: 22px;
-  font-weight: 600;
-  margin: 0 0 20px;
-}
-
-/* Inputs ocupando toda largura do card */
-.loginCard input {
-  display: block;
-  width:90%;
-  padding: 14px 16px;
-  font-size: 15px;
-  margin-bottom: 14px; /* espaço entre os campos */
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  background: rgba(255, 255, 255, 0.15);
-  color: #fff;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
 }
 /* ===== Modal de Busca de Ticket ===== */
 #searchModal .modalBox {
