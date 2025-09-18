@@ -5,25 +5,48 @@
     <title>Login • Movidesk - Sistemas Internos</title>
     <link href="public/style.css" rel="stylesheet" />
     <style>
-        /* estilos mínimos extras para centralizar o cartão de login */
+        @keyframes gradient {
+            0% {
+                background-position: 0% 50%;
+            }
+            50% {
+                background-position: 100% 50%;
+            }
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+        body {
+            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
+            font-family: Arial, sans-serif;
+        }
         .loginWrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
         .loginCard{
-            width:min(420px,96vw); background:#fff; color:#111827; border:1px solid #e5e7eb; border-radius:14px;
-            box-shadow:0 12px 40px rgba(0,0,0,.12); padding:22px;
+            width:min(420px,96vw);
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 22px;
         }
-        body.dark .loginCard{ background:#1f2937; color:#f9fafb; border-color:#374151; }
-        .loginCard h1{margin:0 0 12px;font-size:18px;display:flex;align-items:center;gap:10px}
-        .loginCard label{display:block;font-size:12px;margin:10px 0 6px;opacity:.85}
+        .loginCard h1{margin:0 0 12px;font-size:18px;display:flex;align-items:center;gap:10px; color: #fff;}
+        .loginCard label{display:block;font-size:12px;margin:10px 0 6px;opacity:.85; color: #fff;}
         .loginCard input{
-            width:100%; padding:10px 12px; border:1px solid #e5e7eb; border-radius:10px; background:#fff; color:#111827;
+            width:100%; padding:10px 12px; border:1px solid rgba(255, 255, 255, 0.5); border-radius:10px; background:rgba(255, 255, 255, 0.2); color:#fff;
         }
-        body.dark .loginCard input{ background:#111827; color:#f9fafb; border-color:#374151; }
+        .loginCard input::placeholder {
+            color: rgba(255, 255, 255, 0.8);
+        }
         .loginActions{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:14px}
         .btn{padding:10px 14px;border-radius:10px;border:1px solid transparent;font-weight:700;cursor:pointer}
         .btnPrimary{background:#2563eb;color:#fff}
-        .btnGhost{background:#f3f4f6;color:#111827;border-color:#e5e7eb}
-        body.dark .btnGhost{background:#111827;color:#e5e7eb;border-color:#374151}
-        .muted{font-size:12px;opacity:.8}
+        .btnGhost{background:rgba(255, 255, 255, 0.2);color:#fff;border-color:rgba(255, 255, 255, 0.5)}
+        .muted{font-size:12px;opacity:.8; color: #fff;}
     </style>
 </head>
 <body>

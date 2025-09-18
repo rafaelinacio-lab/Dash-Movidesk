@@ -1,44 +1,67 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8">
-  <title>Login - Viasoft</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <title>Login • Movidesk - Sistemas Internos</title>
+  <link href="style.css" rel="stylesheet" />
 </head>
 <body>
-<div class="login-container">
-  <h1 class="brandTitle">
-    <img src="/logo-viasoft.png" alt="Viasoft" class="headerLogo" />
-  </h1>
-  <form id="loginForm">
-    <input type="text" name="username" placeholder="Digite Seu Usuário" required>
-    <input type="password" name="password" placeholder="Digite Sua Senha" required>
-    <button type="submit">Entrar</button>
-  </form>
-  <p id="msg"></p>
-  <!-- Selo fixo -->
+  <div class="loginWrap">
+<form class="loginCard" method="POST" action="/login" autocomplete="on">
+  <div class="loginLogo">
+    <img src="/logo-viasoft.png" alt="Viasoft">
+  </div>
+
+  <label for="username">Usuário</label>
+  <input id="username" name="username" required autofocus />
+
+  <label for="password">Senha</label>
+  <input id="password" name="password" type="password" required />
+
+  <div class="loginActions">
+    <button class="btn btnPrimary" type="submit">Entrar</button>
+    <span class="muted">Dica: peça ao admin para criar seu acesso.</span>
+  </div>
+</form>
+  </div>
   <div class="appFooter">Desenvolvido para Viasoft © 2025</div>
-</div>
-
 <script>
-  document.getElementById("loginForm").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-    const payload = Object.fromEntries(formData.entries());
+  const form = document.querySelector(".loginCard");
+  const btn = form.querySelector(".btnPrimary");
 
-    const resp = await fetch("/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+  form.addEventListener("submit", async function (e) {
+    e.preventDefault(); // impede envio tradicional
+    btn.classList.add("loading");
 
-    const data = await resp.json();
-    if (data.success) {
-      window.location.href = "/dashboard";
-    } else {
-      document.getElementById("msg").textContent = data.error || "Falha no login";
+    const formData = new FormData(form);
+    const payload = {
+      username: formData.get("username"),
+      password: formData.get("password"),
+    };
+
+    try {
+      const res = await fetch("/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        // 🔹 redireciona para a dashboard
+        window.location.href = "/dashboard";
+      } else {
+        alert(data.error || "Falha no login");
+        btn.classList.remove("loading");
+      }
+    } catch (err) {
+      alert("Erro de conexão com o servidor");
+      btn.classList.remove("loading");
     }
   });
 </script>
+
+
 </body>
 </html>

@@ -27,7 +27,7 @@
                     <ul id="notifList" class="notifList"></ul>
                 </div>
             </div>
-            <button id="toggleTheme" class="btnGhost sm">🌙 Tema Escuro</button>
+            <button id="toggleTheme" class="btnGhost sm">🌙</button>
                 <button id="btnMelhoria" class="btnGhost sm" title="Sugerir melhoria">💡 Sugerir Melhoria</button>
             <a href="/logout" id="logoutBtn" class="btnGhost sm danger">🚪 Sair</a>
         </div>
@@ -1141,7 +1141,7 @@
         document.getElementById("toggleTheme").addEventListener("click",()=>{
             document.body.classList.toggle("dark");
             document.getElementById("toggleTheme").textContent =
-                document.body.classList.contains("dark") ? "☀️ Tema Claro" : "🌙 Tema Escuro";
+                document.body.classList.contains("dark") ? "☀️" : "🌙";
         });
 
         attachMoreHandlers();
