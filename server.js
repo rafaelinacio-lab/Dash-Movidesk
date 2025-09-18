@@ -1,4 +1,4 @@
-﻿import express from "express";
+import express from "express";
 import axios from "axios";
 import dotenv from "dotenv";
 import session from "express-session";
@@ -154,23 +154,24 @@ app.get("/api/me", async (req, res) => {
 app.get("/api/ticket/:id", requireAuth, async (req, res) => {
     const { id } = req.params;
     try {
-        const url = `${MOVI_URL}?token=${MOVI_TOKEN}&$select=id,subject,status,owner,ownerTeam,createdDate,customFieldValues,clients,actions&$expand=owner($select=id,businessName),clients($select=id,businessName),actions($expand=createdBy($select=businessName))&$filter=id eq ${id}`;
+        const url = `${MOVI_URL}?token=${MOVI_TOKEN}&$select=id,subject,status,owner,ownerTeam,createdDate,customFieldValues,clients,actions&$expand=owner($select=id,businessName),clients($select=id,businessName;$expand=organization($select=businessName)),actions($expand=createdBy($select=businessName))&$filter=id eq ${id}`;
         const { data } = await axios.get(url, { timeout: 15000 });
         if (data.length === 0) {
             return res.status(404).json({ error: "Ticket não encontrado" });
         }
         const ticket = data[0];
-        const owner = ticket.owner ? ticket.owner.businessName : "Não atribuído";
+        const owner = ticket.owner?.businessName || "Não atribuído";
         const ownerTeam = ticket.ownerTeam || "Não definido";
         const createdDate = ticket.createdDate;
         const subject = ticket.subject;
         const status = ticket.status;
-        const requester = ticket.clients && ticket.clients.length > 0 ? ticket.clients[0].businessName : "Não informado";
-        const actions = ticket.actions ? ticket.actions.map(action => ({
+        const requester = ticket.clients?.[0]?.businessName || "Não informado";
+        const requesterOrganization = ticket.clients?.[0]?.organization?.businessName || "Não informado";
+        const actions = (ticket.actions || []).map(action => ({
             description: action.description,
-            createdBy: action.createdBy.businessName,
+            createdBy: action.createdBy?.businessName || "Não informado",
             createdDate: action.createdDate
-        })) : [];
+        }));
 
         res.json({
             id: ticket.id,
@@ -180,6 +181,7 @@ app.get("/api/ticket/:id", requireAuth, async (req, res) => {
             ownerTeam,
             createdDate,
             requester,
+            requesterOrganization,
             actions
         });
     } catch (err) {
