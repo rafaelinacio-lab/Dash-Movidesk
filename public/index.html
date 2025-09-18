@@ -7,6 +7,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
+    <body class="dark">
 <div class="container">
     <header>
         <h1 class="brandTitle">
@@ -1449,8 +1450,32 @@
   window.__updateOwnerOptionsFromTickets = upd;
 })();
 </script>
+<script>
+    (async () => {
+        try {
+            const resp = await fetch("/api/me");
+            if (!resp.ok) return;
+            const user = await resp.json();
+            if (user.role === "admin" || user.role === "supervisor") {
+                const container = document.querySelector(".acoes");
+                let reportsBtn = document.getElementById("relatoriosBtn");
+                if (!reportsBtn) {
+                    reportsBtn = document.createElement("a");
+                    reportsBtn.href = "/reports";
+                    reportsBtn.id = "relatoriosBtn";
+                    reportsBtn.className = "btnGhost sm";
+                    reportsBtn.textContent = "📊 Relatórios";
+                    container.insertBefore(reportsBtn, document.getElementById("logoutBtn"));
+                }
+            }
+        } catch (err) {
+            console.error("Erro ao checar permissões:", err);
+        }
+    })();
+</script>
 </body>
 </html>
+
 
 
 

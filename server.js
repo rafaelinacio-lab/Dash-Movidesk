@@ -126,7 +126,17 @@ function requireAdmin(req, res, next) {
     next();
 }
 
+function requireSupervisor(req, res, next) {
+    if (!req.session.userId || (req.session.role !== "admin" && req.session.role !== "supervisor")) {
+        return res.status(403).send("Acesso negado");
+    }
+    next();
+}
+
 /* ---------------- Rotas de Usuário ---------------- */
+app.get("/reports", requireSupervisor, (req, res) => {
+    res.sendFile(path.join(__dirname, "public", "reports.html"));
+});
 app.get("/api/me", async (req, res) => {
     if (!req.session.userId) return res.status(401).json({ error: "Não autenticado" });
 
