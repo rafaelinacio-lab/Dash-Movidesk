@@ -411,7 +411,7 @@ body.dark .btnInativar:hover, body.dark .btnExcluir:hover {
 /* ===== Widgets (cards do topo) ===== */
 .cards { display: flex; gap: 15px; margin-bottom: 12px; }
 .cardWidget {
-    --accent: rgba(37,99,235,0.24);
+    --accent: rgba(255,7,7,0.95);
     --accent-solid: #2563eb;
     --text-color: var(--text-primary);
     flex: 1;
@@ -471,12 +471,12 @@ body.dark .cardWidget {
     box-shadow: 0 32px 70px -28px rgba(2,6,23,0.9);
     color: var(--text-color);
 }
-.cardWidget.azul    { --accent: rgba(37,99,235,0.2); --accent-solid:#2563eb; --accent-shadow: rgba(37,99,235,0.45); --text-color:#0f172a; }
-.cardWidget.verde   { --accent: rgba(34,197,94,0.2); --accent-solid:#16a34a; --accent-shadow: rgba(34,197,94,0.42); --text-color:#064e3b; }
-.cardWidget.laranja { --accent: rgba(249,115,22,0.22); --accent-solid:#f97316; --accent-shadow: rgba(249,115,22,0.45); --text-color:#9a3412; }
-.cardWidget.vermelho{ --accent: rgba(248,113,113,0.22); --accent-solid:#dc2626; --accent-shadow: rgba(248,113,113,0.45); --text-color:#7f1d1d; }
-.cardWidget.cinza   { --accent: rgba(99,102,241,0.18); --accent-solid:#6b7280; --accent-shadow: rgba(99,102,241,0.38); --text-color:#1f2937; }
-.cardWidget.roxo    { --accent: rgba(168,85,247,0.2); --accent-solid:#7c3aed; --accent-shadow: rgba(168,85,247,0.42); --text-color:#4c1d95; }
+.cardWidget.azul    { --accent: rgba(37,99,235,0.78); --accent-solid:#2563eb; --accent-shadow: rgba(37,99,235,0.45); --text-color:#0f172a; }
+.cardWidget.verde   { --accent: rgba(34,197,94,0.78); --accent-solid:#16a34a; --accent-shadow: rgba(34,197,94,0.42); --text-color:#064e3b; }
+.cardWidget.laranja { --accent: rgba(249,115,22,0.78); --accent-solid:#f97316; --accent-shadow: rgba(249,115,22,0.45); --text-color:#9a3412; }
+.cardWidget.vermelho{ --accent: rgba(216, 58, 58, 0.78); --accent-solid:#dc2626; --accent-shadow: rgba(248,113,113,0.45); --text-color:#7f1d1d; }
+.cardWidget.cinza   { --accent: rgba(99,102,241,0.78); --accent-solid:#6b7280; --accent-shadow: rgba(99,102,241,0.38); --text-color:#1f2937; }
+.cardWidget.roxo    { --accent: rgba(168,85,247,0.78); --accent-solid:#7c3aed; --accent-shadow: rgba(168,85,247,0.42); --text-color:#4c1d95; }
 body.dark .cardWidget.azul    { --accent: rgba(37,99,235,0.22); --accent-solid:#3b82f6; --accent-shadow: rgba(37,99,235,0.38); --text-color:#dbeafe; }
 body.dark .cardWidget.verde   { --accent: rgba(34,197,94,0.22); --accent-solid:#22c55e; --accent-shadow: rgba(34,197,94,0.36); --text-color:#bbf7d0; }
 body.dark .cardWidget.laranja { --accent: rgba(249,115,22,0.24); --accent-solid:#fb923c; --accent-shadow: rgba(249,115,22,0.4); --text-color:#fed7aa; }
