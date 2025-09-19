@@ -767,14 +767,18 @@
             if (t.overdue && !hasAlert) card.style.outline = "2px solid rgba(220,38,38,.45)";
 
             card.innerHTML = `
-      <h4>#${t.id} - ${t.subject}</h4>
-      <p><b>Urgência:</b> <span class="pill urg-${urgSlug}">${t.urgency || "Não definida"}</span></p>
-    <p><b>Status detalhado:</b> <span class="statusDetalhado status-${statusSlug}">${t.status || "Não definido"}</span></p>
-      <p><b>Prev. solução:</b> <span class="badgePrev ${prevClass}">${prevSolTxt}</span></p>
-      <div class="responsavelBox">
-        <span class="badge responsavel">${t.owner}</span>
+      <div class="ticket-summary">
+        <h4>#${t.id} - ${t.subject}</h4>
       </div>
-      <small>Criado em ${t.createdDate ? new Date(t.createdDate).toLocaleDateString() : "-"}</small>
+      <div class="ticket-details">
+        <p><b>Urgência:</b> <span class="pill urg-${urgSlug}">${t.urgency || "Não definida"}</span></p>
+        <p><b>Status detalhado:</b> <span class="statusDetalhado status-${statusSlug}">${t.status || "Não definido"}</span></p>
+        <p><b>Prev. solução:</b> <span class="badgePrev ${prevClass}">${prevSolTxt}</span></p>
+        <div class="responsavelBox">
+          <span class="badge responsavel">${t.owner}</span>
+        </div>
+        <small>Criado em ${t.createdDate ? new Date(t.createdDate).toLocaleDateString() : "-"}</small>
+      </div>
     `;
 
             const currentColor = getCardColor(t.id);
@@ -850,6 +854,14 @@
                 }
             });
 
+
+
+            colorInput.addEventListener("click", (event) => {
+                event.stopPropagation();
+            });
+            colorInput.addEventListener("pointerdown", (event) => {
+                event.stopPropagation();
+            });
             const resetBtn = document.createElement("button");
             resetBtn.type = "button";
             resetBtn.className = "ticketColorReset";
@@ -880,10 +892,46 @@
             });
 
             actions.append(colorBtn, resetBtn, colorInput);
+
             card.appendChild(actions);
 
+            card.setAttribute("tabindex", "0");
+
+            card.setAttribute("aria-expanded", "false");
+
+            const toggleCardExpansion = () => {
+
+                const expanded = card.classList.toggle("expanded");
+
+                card.setAttribute("aria-expanded", expanded ? "true" : "false");
+
+            };
+
+            card.addEventListener("click", (event) => {
+
+                if (event.target.closest(".ticketActions")) return;
+
+                toggleCardExpansion();
+
+            });
+
+            card.addEventListener("keydown", (event) => {
+
+                if (event.target.closest(".ticketActions")) return;
+
+                if (event.key === "Enter" || event.key === " ") {
+
+                    event.preventDefault();
+
+                    toggleCardExpansion();
+
+                }
+
+            });
+
             return card;
-        };
+
+       };
 
         const renderColumns = () => {
             document.getElementById("countNovos").textContent       = colData.novos.length;
