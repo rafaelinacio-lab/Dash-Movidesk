@@ -7,7 +7,6 @@ import mysql from "mysql2/promise";
 import path from "path";
 import { fileURLToPath } from "url";
 import dns from "node:dns";
-import fs from "fs/promises";
 
 dotenv.config();
 
@@ -33,6 +32,18 @@ try {
             PRIMARY KEY (user_id, ticket_id),
             CONSTRAINT fk_user_card_colors_user FOREIGN KEY (user_id)
                 REFERENCES users(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+    await db.query(`
+        CREATE TABLE IF NOT EXISTS melhorias (
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            titulo VARCHAR(150) NOT NULL,
+            descricao TEXT NOT NULL,
+            autor VARCHAR(120) NOT NULL,
+            status VARCHAR(40) NOT NULL DEFAULT 'Enviada',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
     await db.query(`
@@ -64,7 +75,6 @@ app.use(express.urlencoded({ extended: true }));
 /* ------------------ Paths ------------------ */
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const MELHORIAS_PATH = path.join(__dirname, "melhorias.json");
 
 const HEX_COLOR_REGEX = /^#[0-9A-Fa-f]{6}$/;
 const VALID_ORDER_COLUMNS = new Set(["novos", "atendimento", "parados", "vencidos"]);
@@ -600,58 +610,48 @@ app.get("/api/tickets", async (req, res) => {
 // Rotas para melhorias
 app.get("/api/melhorias", async (req, res) => {
     try {
-        const data = await fs.readFile(MELHORIAS_PATH, "utf-8");
-        const melhorias = JSON.parse(data);
-        melhorias.forEach(m => {
-            if (!m.status) m.status = "Enviada";
-            if (!m.id) m.id = Math.random().toString(36).slice(2, 10);
-        });
-        await fs.writeFile(MELHORIAS_PATH, JSON.stringify(melhorias, null, 2));
+        const [rows] = await db.query("SELECT id, titulo, descricao, autor, status, created_at FROM melhorias ORDER BY created_at DESC");
+        const melhorias = rows.map((row) => ({
+            id: row.id,
+            titulo: row.titulo,
+            descricao: row.descricao,
+            autor: row.autor,
+            status: row.status || 'Enviada',
+            data: row.created_at ? new Date(row.created_at).toISOString() : null,
+        }));
         res.json(melhorias);
     } catch (err) {
-        res.status(500).json({ error: "Erro ao carregar melhorias" });
+        console.error('Erro ao carregar melhorias:', err);
+        res.status(500).json({ error: 'Erro ao carregar melhorias' });
     }
 });
 
 app.post("/api/melhorias/status", async (req, res) => {
     const { id, status } = req.body;
-    if (!id || !status) return res.status(400).json({ error: "Dados obrigatórios" });
+    if (!id || !status) return res.status(400).json({ error: 'Dados obrigatórios' });
     try {
-        const data = await fs.readFile(MELHORIAS_PATH, "utf-8");
-        const melhorias = JSON.parse(data);
-        const idx = melhorias.findIndex(m => m.id === id);
-        if (idx === -1) return res.status(404).json({ error: "Melhoria não encontrada" });
-        melhorias[idx].status = status;
-        await fs.writeFile(MELHORIAS_PATH, JSON.stringify(melhorias, null, 2));
+        const [result] = await db.query("UPDATE melhorias SET status = ?, updated_at = NOW() WHERE id = ?", [status, id]);
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Melhoria não encontrada' });
+        }
         res.json({ success: true });
     } catch (err) {
-        res.status(500).json({ error: "Erro ao atualizar melhoria" });
+        console.error('Erro ao atualizar melhoria:', err);
+        res.status(500).json({ error: 'Erro ao atualizar melhoria' });
     }
 });
+
 app.post("/api/melhorias/sugerir", async (req, res) => {
     const { titulo, descricao, autor } = req.body;
     if (!titulo || !descricao || !autor) {
-        return res.status(400).json({ error: "Campos obrigatórios ausentes" });
+        return res.status(400).json({ error: 'Campos obrigatórios ausentes' });
     }
     try {
-        // Carrega melhorias existentes
-        let melhorias = [];
-        try {
-            const data = await fs.readFile(MELHORIAS_PATH, "utf-8");
-            melhorias = JSON.parse(data);
-        } catch {}
-        // Adiciona nova melhoria
-        melhorias.push({
-            titulo,
-            descricao,
-            autor,
-            data: new Date().toISOString()
-        });
-        await fs.writeFile(MELHORIAS_PATH, JSON.stringify(melhorias, null, 2));
-        res.json({ success: true });
+        const [result] = await db.query("INSERT INTO melhorias (titulo, descricao, autor) VALUES (?, ?, ?)", [titulo, descricao, autor]);
+        res.json({ success: true, id: result.insertId });
     } catch (err) {
-        console.error("❌ Erro ao salvar melhoria:", err);
-        res.status(500).json({ error: "Erro ao salvar melhoria" });
+        console.error('Erro ao salvar melhoria:', err);
+        res.status(500).json({ error: 'Erro ao salvar melhoria' });
     }
 });
 
