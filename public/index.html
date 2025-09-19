@@ -1,1592 +1,1617 @@
 ﻿<!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
     <meta charset="UTF-8" />
     <title>Dashboard de Tickets</title>
     <link href="style.css" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body>
-    <body class="dark">
-<div class="container">
-    <header>
-        <h1 class="brandTitle">
-            <img src="/logo-viasoft.png" alt="Viasoft" class="headerLogo" />
-             Tickets <span> Movidesk</span>
-        </h1>
-        <div class="acoes">
-            <div class="search-bubble">
-    <input type="text" id="ticketId" placeholder="Buscar ticket por ID...">
-    <button id="searchBtn">🔍</button>
-</div>
 
-            <div class="notif">
-                <button id="notifBtn" class="btnGhost sm" aria-label="Notificações">
-                    🔔
-                    <span id="notifCount" class="notifCount" hidden>0</span>
-                </button>
-                <div id="notifPanel" class="notifPanel" aria-hidden="true">
-                    <div class="notifHead">
-                        <strong>Notificações</strong>
-                        <button id="notifClear" class="btnGhost sm">Limpar</button>
+<body>
+
+    <body class="dark">
+        <div class="container">
+            <header>
+                <h1 class="brandTitle">
+                    <img src="/logo-viasoft.png" alt="Viasoft" class="headerLogo" />
+                    Tickets <span> Movidesk</span>
+                </h1>
+                <div class="acoes">
+                    <div class="search-bubble">
+                        <input type="text" id="ticketId" placeholder="Buscar ticket por ID...">
+                        <button id="searchBtn">🔍</button>
                     </div>
-                    <ul id="notifList" class="notifList"></ul>
+
+                    <div class="notif">
+                        <button id="notifBtn" class="btnGhost sm" aria-label="Notificações">
+                            🔔
+                            <span id="notifCount" class="notifCount" hidden>0</span>
+                        </button>
+                        <div id="notifPanel" class="notifPanel" aria-hidden="true">
+                            <div class="notifHead">
+                                <strong>Notificações</strong>
+                                <button id="notifClear" class="btnGhost sm">Limpar</button>
+                            </div>
+                            <ul id="notifList" class="notifList"></ul>
+                        </div>
+                    </div>
+                    <button id="toggleTheme" class="btnGhost sm">🌙</button>
+                    <button id="btnMelhoria" class="btnGhost sm" title="Sugerir melhoria">💡 Sugerir Melhoria</button>
+                    <a href="/logout" id="logoutBtn" class="btnGhost sm danger">🚪 Sair</a>
+                </div>
+
+            </header>
+
+            <!-- Widgets -->
+            <div class="cards">
+                <div class="cardWidget azul">
+                    <div class="cardInfo">
+                        <h3>Tickets Criados (Mês)</h3>
+                        <p id="totalTickets">0</p>
+                    </div>
+                    <div class="iconBox"><span>👥</span></div>
+                </div>
+                <div class="cardWidget laranja">
+                    <div class="cardInfo">
+                        <h3>Novos</h3>
+                        <p id="novos">0</p>
+                    </div>
+                    <div class="iconBox"><span>➕</span></div>
+                </div>
+                <div class="cardWidget verde">
+                    <div class="cardInfo">
+                        <h3>Em Atendimento</h3>
+                        <p id="emAtendimento">0</p>
+                    </div>
+                    <div class="iconBox"><span>📈</span></div>
+                </div>
+                <div class="cardWidget cinza">
+                    <div class="cardInfo">
+                        <h3>Aguardando Validação ou Fornecedor</h3>
+                        <p id="parados">0</p>
+                    </div>
+                    <div class="iconBox"><span>⏸️</span></div>
+                </div>
+
+                <!-- Em Aberto -->
+                <div class="cardWidget roxo">
+                    <div class="cardInfo">
+                        <h3>Em Aberto</h3>
+                        <p id="abertos">0</p>
+                    </div>
+                    <div class="iconBox"><span>📂</span></div>
+                </div>
+
+                <div class="cardWidget vermelho">
+                    <div class="cardInfo">
+                        <h3>Críticos</h3>
+                        <p id="criticos">0</p>
+                    </div>
+                    <div class="iconBox"><span>🛑</span></div>
                 </div>
             </div>
-            <button id="toggleTheme" class="btnGhost sm">🌙</button>
-                <button id="btnMelhoria" class="btnGhost sm" title="Sugerir melhoria">💡 Sugerir Melhoria</button>
-            <a href="/logout" id="logoutBtn" class="btnGhost sm danger">🚪 Sair</a>
-        </div>
 
-    </header>
+            <!-- Kanban + Gráficos -->
+            <div class="kanban">
+                <div class="coluna amarelo">
+                    <h3>Novo (<span id="countNovos">0</span>)</h3>
+                    <div class="lista" id="novosLista"></div>
+                    <button class="btnMore" data-col="novos">Ver mais</button>
+                </div>
 
-    <!-- Widgets -->
-    <div class="cards">
-        <div class="cardWidget azul">
-            <div class="cardInfo"><h3>Tickets Criados (Mês)</h3><p id="totalTickets">0</p></div>
-            <div class="iconBox"><span>👥</span></div>
-        </div>
-        <div class="cardWidget laranja">
-            <div class="cardInfo"><h3>Novos</h3><p id="novos">0</p></div>
-            <div class="iconBox"><span>➕</span></div>
-        </div>
-        <div class="cardWidget verde">
-            <div class="cardInfo"><h3>Em Atendimento</h3><p id="emAtendimento">0</p></div>
-            <div class="iconBox"><span>📈</span></div>
-        </div>
-        <div class="cardWidget cinza">
-            <div class="cardInfo"><h3>Aguardando Validação ou Fornecedor</h3><p id="parados">0</p></div>
-            <div class="iconBox"><span>⏸️</span></div>
-        </div>
+                <div class="coluna azulClaro">
+                    <h3>Em Atendimento (<span id="countAtendimento">0</span>)</h3>
+                    <div class="lista" id="atendimentoLista"></div>
+                    <button class="btnMore" data-col="atendimento">Ver mais</button>
+                </div>
 
-        <!-- Em Aberto -->
-        <div class="cardWidget roxo">
-            <div class="cardInfo"><h3>Em Aberto</h3><p id="abertos">0</p></div>
-            <div class="iconBox"><span>📂</span></div>
-        </div>
+                <div class="coluna vermelhoClaro">
+                    <h3>Aguardando (<span id="countParados">0</span>)</h3>
+                    <div class="lista" id="paradosLista"></div>
+                    <button class="btnMore" data-col="parados">Ver mais</button>
+                </div>
 
-        <div class="cardWidget vermelho">
-            <div class="cardInfo"><h3>Críticos</h3><p id="criticos">0</p></div>
-            <div class="iconBox"><span>🛑</span></div>
-        </div>
-    </div>
+                <!-- Coluna Vencidos -->
+                <div class="coluna vencidoClaro">
+                    <h3>Vencidos (<span id="countVencidos">0</span>)</h3>
+                    <div class="lista" id="vencidosLista"></div>
+                    <button class="btnMore" data-col="vencidos">Ver mais</button>
+                </div>
 
-    <!-- Kanban + Gráficos -->
-    <div class="kanban">
-        <div class="coluna amarelo">
-            <h3>Novo (<span id="countNovos">0</span>)</h3>
-            <div class="lista" id="novosLista"></div>
-            <button class="btnMore" data-col="novos">Ver mais</button>
-        </div>
+                <!-- Stack vertical dos gráficos -->
+                <div class="graficoStack">
+                    <div class="graficoCard" id="cardPrioridade">
+                        <h3>Distribuição por Prioridade</h3>
+                        <canvas id="graficoDonut"></canvas>
+                        <div id="graficoMsg" class="graficoMsg"></div>
+                        <ul id="graficoLegenda" class="legendList"></ul>
+                    </div>
 
-        <div class="coluna azulClaro">
-            <h3>Em Atendimento (<span id="countAtendimento">0</span>)</h3>
-            <div class="lista" id="atendimentoLista"></div>
-            <button class="btnMore" data-col="atendimento">Ver mais</button>
-        </div>
-
-        <div class="coluna vermelhoClaro">
-            <h3>Aguardando (<span id="countParados">0</span>)</h3>
-            <div class="lista" id="paradosLista"></div>
-            <button class="btnMore" data-col="parados">Ver mais</button>
-        </div>
-
-        <!-- Coluna Vencidos -->
-        <div class="coluna vencidoClaro">
-            <h3>Vencidos (<span id="countVencidos">0</span>)</h3>
-            <div class="lista" id="vencidosLista"></div>
-            <button class="btnMore" data-col="vencidos">Ver mais</button>
-        </div>
-
-        <!-- Stack vertical dos gráficos -->
-        <div class="graficoStack">
-            <div class="graficoCard" id="cardPrioridade">
-                <h3>Distribuição por Prioridade</h3>
-                <canvas id="graficoDonut"></canvas>
-                <div id="graficoMsg" class="graficoMsg"></div>
-                <ul id="graficoLegenda" class="legendList"></ul>
-            </div>
-
-            <div class="graficoCard" id="cardAgentes">
-                <h3>Distribuição por Agente (ativos)</h3>
-                <canvas id="graficoDonutAgents"></canvas>
-                <div id="graficoMsgAgents" class="graficoMsg"></div>
-                <ul id="graficoLegendaAgents" class="legendList"></ul>
+                    <div class="graficoCard" id="cardAgentes">
+                        <h3>Distribuição por Agente (ativos)</h3>
+                        <canvas id="graficoDonutAgents"></canvas>
+                        <div id="graficoMsgAgents" class="graficoMsg"></div>
+                        <ul id="graficoLegendaAgents" class="legendList"></ul>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
-</div>
 
-<!-- Modal de alerta por palavras-chave -->
-<div id="inativacaoOverlay" class="modalOverlay" aria-hidden="true">
-    <div class="modalBox" role="dialog" aria-modal="true" aria-labelledby="inativacaoTitle">
-        <h3 id="inativacaoTitle">⚠️ Novos Tickets Urgentes</h3>
-        <ul id="inativacaoList"></ul>
-        <div class="modalActions">
-            <button id="inativacaoClose" class="btnGhost">Fechar</button>
-        </div>
-    </div>
-</div>
-
-<!-- Modal Melhoria -->
-<div id="modalMelhoria" class="modalOverlay" aria-hidden="true">
-    <div class="modalBox" role="dialog" aria-modal="true">
-        <h3>💡 Sugerir Melhoria</h3>
-        <form id="formMelhoria" style="display:flex;flex-direction:column;gap:10px;">
-            <input type="text" id="melhoriaTitulo" placeholder="Título da melhoria" required />
-            <textarea id="melhoriaDescricao" placeholder="Descreva a sugestão" required rows="4"></textarea>
-            <input type="text" id="melhoriaAutor" placeholder="Seu nome ou usuário" required readonly />
-            <div style="display:flex;gap:10px;justify-content:flex-end;">
-                <button type="submit" class="btnSalvar">Enviar</button>
-                <button type="button" id="fecharMelhoria" class="btnGray">Cancelar</button>
+        <!-- Modal de alerta por palavras-chave -->
+        <div id="inativacaoOverlay" class="modalOverlay" aria-hidden="true">
+            <div class="modalBox" role="dialog" aria-modal="true" aria-labelledby="inativacaoTitle">
+                <h3 id="inativacaoTitle">⚠️ Novos Tickets Urgentes</h3>
+                <ul id="inativacaoList"></ul>
+                <div class="modalActions">
+                    <button id="inativacaoClose" class="btnGhost">Fechar</button>
+                </div>
             </div>
-        </form>
-    </div>
-</div>
-
-<!-- Modal Minhas Melhorias -->
-<div id="modalMinhasMelhorias" class="modalOverlay" aria-hidden="true">
-    <div class="modalBox" role="dialog" aria-modal="true">
-        <h3>📋 Minhas Melhorias</h3>
-        <div id="minhasMelhoriasConteudo">Carregando...</div>
-        <div class="modalActions" style="margin-top:10px; display:flex; justify-content:flex-end; gap:8px;">
-            <button id="fecharMinhasMelhorias" class="btnGray">Fechar</button>
         </div>
-    </div>
-</div>
-<!-- Selo fixo -->
-<div class="appFooter">Desenvolvido para Viasoft © 2025</div>
 
-<script>
-    (() => {
-        // Modal Melhoria
-        const btnMelhoria = document.getElementById("btnMelhoria");
-        const modalMelhoria = document.getElementById("modalMelhoria");
-        const formMelhoria = document.getElementById("formMelhoria");
-        const fecharMelhoria = document.getElementById("fecharMelhoria");
-        const melhoriaAutor = document.getElementById("melhoriaAutor");
+        <!-- Modal Melhoria -->
+        <div id="modalMelhoria" class="modalOverlay" aria-hidden="true">
+            <div class="modalBox" role="dialog" aria-modal="true">
+                <h3>💡 Sugerir Melhoria</h3>
+                <form id="formMelhoria" style="display:flex;flex-direction:column;gap:10px;">
+                    <input type="text" id="melhoriaTitulo" placeholder="Título da melhoria" required />
+                    <textarea id="melhoriaDescricao" placeholder="Descreva a sugestão" required rows="4"></textarea>
+                    <input type="text" id="melhoriaAutor" placeholder="Seu nome ou usuário" required readonly />
+                    <div style="display:flex;gap:10px;justify-content:flex-end;">
+                        <button type="submit" class="btnSalvar">Enviar</button>
+                        <button type="button" id="fecharMelhoria" class="btnGray">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
 
-        // Função para obter usuário logado da API
-        async function getUsuarioLogado() {
-            try {
-                const res = await fetch("/api/me");
-                if (!res.ok) return "Usuário";
-                const user = await res.json();
-                return user.username || "Usuário";
-            } catch {
-                return "Usuário";
-            }
-        }
+        <!-- Modal Minhas Melhorias -->
+        <div id="modalMinhasMelhorias" class="modalOverlay" aria-hidden="true">
+            <div class="modalBox" role="dialog" aria-modal="true">
+                <h3>📋 Minhas Melhorias</h3>
+                <div id="minhasMelhoriasConteudo">Carregando...</div>
+                <div class="modalActions" style="margin-top:10px; display:flex; justify-content:flex-end; gap:8px;">
+                    <button id="fecharMinhasMelhorias" class="btnGray">Fechar</button>
+                </div>
+            </div>
+        </div>
+        <!-- Selo fixo -->
+        <div class="appFooter">Desenvolvido para Viasoft © 2025</div>
 
-        btnMelhoria.onclick = () => {
-            getUsuarioLogado().then(nome => {
-                melhoriaAutor.value = nome;
-            });
-            modalMelhoria.classList.add("show");
-            modalMelhoria.setAttribute("aria-hidden","false");
-        };
-        fecharMelhoria.onclick = () => {
-            modalMelhoria.classList.remove("show");
-            modalMelhoria.setAttribute("aria-hidden","true");
-        };
-        formMelhoria.onsubmit = async (e) => {
-            e.preventDefault();
-            const titulo = document.getElementById("melhoriaTitulo").value;
-            const descricao = document.getElementById("melhoriaDescricao").value;
-            const autor = melhoriaAutor.value;
-            const res = await fetch("/api/melhorias/sugerir", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ titulo, descricao, autor })
-            });
-            if (res.ok) {
-                alert("✅ Melhoria enviada!");
-                formMelhoria.reset();
-                fecharMelhoria.click();
-            } else {
-                alert("❌ Erro ao enviar melhoria");
-            }
-        };
+        <script>
+            (() => {
+                // Modal Melhoria
+                const btnMelhoria = document.getElementById("btnMelhoria");
+                const modalMelhoria = document.getElementById("modalMelhoria");
+                const formMelhoria = document.getElementById("formMelhoria");
+                const fecharMelhoria = document.getElementById("fecharMelhoria");
+                const melhoriaAutor = document.getElementById("melhoriaAutor");
 
-        // Garante o botão 'Minhas Melhorias' no header
-        (function(){
-            const actions = document.querySelector('.acoes');
-            if (actions && !document.getElementById('btnMinhasMelhorias')) {
-                const btn = document.createElement('button');
-                btn.id = 'btnMinhasMelhorias';
-                btn.className = 'btnGhost sm';
-                btn.title = 'Minhas melhorias';
-                btn.textContent = '📋 Minhas Melhorias';
-                const logout = document.getElementById('logoutBtn');
-                if (logout) actions.insertBefore(btn, logout); else actions.appendChild(btn);
-            }
-        })();
+                // Função para obter usuário logado da API
+                async function getUsuarioLogado() {
+                    try {
+                        const res = await fetch("/api/me");
+                        if (!res.ok) return "Usuário";
+                        const user = await res.json();
+                        return user.username || "Usuário";
+                    } catch {
+                        return "Usuário";
+                    }
+                }
 
-        // Minhas melhorias: botão e modal
-        const btnMinhas = document.getElementById('btnMinhasMelhorias');
-        const modalMinhas = document.getElementById('modalMinhasMelhorias');
-        const fecharMinhas = document.getElementById('fecharMinhasMelhorias');
-        const minhasConteudo = document.getElementById('minhasMelhoriasConteudo');
-        async function getMe(){ try{ const r=await fetch('/api/me'); if(!r.ok) return null; return await r.json(); } catch { return null; } }
-        function openMinhas(){ modalMinhas.classList.add('show'); modalMinhas.setAttribute('aria-hidden','false'); }
-        function closeMinhas(){ modalMinhas.classList.remove('show'); modalMinhas.setAttribute('aria-hidden','true'); }
-        if (btnMinhas) {
-            btnMinhas.addEventListener('click', async ()=>{
-                openMinhas();
-                minhasConteudo.textContent = 'Carregando...';
-                const me = await getMe();
-                if(!me){ minhasConteudo.textContent='Não autenticado.'; return; }
-                try{
-                    const r = await fetch('/api/melhorias');
-                    if(!r.ok){ minhasConteudo.textContent='Erro ao carregar melhorias.'; return; }
-                    const lista = await r.json();
-                    const minhas = (lista||[]).filter(m => (m.autor||'').toLowerCase() === (me.username||'').toLowerCase());
-                    if(!minhas.length){ minhasConteudo.textContent='Você ainda não enviou melhorias.'; return; }
-                    const wrap = document.createElement('div');
-                    minhas.forEach(m=>{
-                        const item = document.createElement('div');
-                        item.className='ticket';
-                        const status = m.status || 'Enviada';
-                        const color = status==='Implementada'?'#16a34a':(status.includes('An')||status.includes('an'))?'#f59e0b':status==='Rejeitada'?'#dc2626':'#2563eb';
-                        item.innerHTML = `<h4>${m.titulo}</h4>
+                btnMelhoria.onclick = () => {
+                    getUsuarioLogado().then(nome => {
+                        melhoriaAutor.value = nome;
+                    });
+                    modalMelhoria.classList.add("show");
+                    modalMelhoria.setAttribute("aria-hidden", "false");
+                };
+                fecharMelhoria.onclick = () => {
+                    modalMelhoria.classList.remove("show");
+                    modalMelhoria.setAttribute("aria-hidden", "true");
+                };
+                formMelhoria.onsubmit = async (e) => {
+                    e.preventDefault();
+                    const titulo = document.getElementById("melhoriaTitulo").value;
+                    const descricao = document.getElementById("melhoriaDescricao").value;
+                    const autor = melhoriaAutor.value;
+                    const res = await fetch("/api/melhorias/sugerir", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ titulo, descricao, autor })
+                    });
+                    if (res.ok) {
+                        alert("✅ Melhoria enviada!");
+                        formMelhoria.reset();
+                        fecharMelhoria.click();
+                    } else {
+                        alert("❌ Erro ao enviar melhoria");
+                    }
+                };
+
+                // Garante o botão 'Minhas Melhorias' no header
+                (function () {
+                    const actions = document.querySelector('.acoes');
+                    if (actions && !document.getElementById('btnMinhasMelhorias')) {
+                        const btn = document.createElement('button');
+                        btn.id = 'btnMinhasMelhorias';
+                        btn.className = 'btnGhost sm';
+                        btn.title = 'Minhas melhorias';
+                        btn.textContent = '📋 Minhas Melhorias';
+                        const logout = document.getElementById('logoutBtn');
+                        if (logout) actions.insertBefore(btn, logout); else actions.appendChild(btn);
+                    }
+                })();
+
+                // Minhas melhorias: botão e modal
+                const btnMinhas = document.getElementById('btnMinhasMelhorias');
+                const modalMinhas = document.getElementById('modalMinhasMelhorias');
+                const fecharMinhas = document.getElementById('fecharMinhasMelhorias');
+                const minhasConteudo = document.getElementById('minhasMelhoriasConteudo');
+                async function getMe() { try { const r = await fetch('/api/me'); if (!r.ok) return null; return await r.json(); } catch { return null; } }
+                function openMinhas() { modalMinhas.classList.add('show'); modalMinhas.setAttribute('aria-hidden', 'false'); }
+                function closeMinhas() { modalMinhas.classList.remove('show'); modalMinhas.setAttribute('aria-hidden', 'true'); }
+                if (btnMinhas) {
+                    btnMinhas.addEventListener('click', async () => {
+                        openMinhas();
+                        minhasConteudo.textContent = 'Carregando...';
+                        const me = await getMe();
+                        if (!me) { minhasConteudo.textContent = 'Não autenticado.'; return; }
+                        try {
+                            const r = await fetch('/api/melhorias');
+                            if (!r.ok) { minhasConteudo.textContent = 'Erro ao carregar melhorias.'; return; }
+                            const lista = await r.json();
+                            const minhas = (lista || []).filter(m => (m.autor || '').toLowerCase() === (me.username || '').toLowerCase());
+                            if (!minhas.length) { minhasConteudo.textContent = 'Você ainda não enviou melhorias.'; return; }
+                            const wrap = document.createElement('div');
+                            minhas.forEach(m => {
+                                const item = document.createElement('div');
+                                item.className = 'ticket';
+                                const status = m.status || 'Enviada';
+                                const color = status === 'Implementada' ? '#16a34a' : (status.includes('An') || status.includes('an')) ? '#f59e0b' : status === 'Rejeitada' ? '#dc2626' : '#2563eb';
+                                item.innerHTML = `<h4>${m.titulo}</h4>
                             <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
-                              <small>Enviado em: ${m.data||'-'}</small>
+                              <small>Enviado em: ${m.data || '-'}</small>
                               <span class=\"badge\" style=\"background:${color}\">${status}</span>
                             </div>
-                            <div class=\"descricaoCompleta\" style=\"margin-top:8px;\">${(m.descricao||'').replace(/\\n/g,'<br>')}</div>`;
-                        wrap.appendChild(item);
+                            <div class=\"descricaoCompleta\" style=\"margin-top:8px;\">${(m.descricao || '').replace(/\\n/g, '<br>')}</div>`;
+                                wrap.appendChild(item);
+                            });
+                            minhasConteudo.innerHTML = ''; minhasConteudo.appendChild(wrap);
+                        } catch {
+                            minhasConteudo.textContent = 'Erro ao conectar.';
+                        }
                     });
-                    minhasConteudo.innerHTML=''; minhasConteudo.appendChild(wrap);
-                }catch{
-                    minhasConteudo.textContent='Erro ao conectar.';
                 }
-            });
-        }
-        if (fecharMinhas) fecharMinhas.addEventListener('click', closeMinhas);
-        /* ---------- Paletas ---------- */
-        const urgencyColors = {
-            "Crítica":"#ef4444","Alta":"#f97316","Média":"#3b82f6","Baixa":"#6b7280","Não definida":"#9ca3af"
-        };
-        const agentPalette = [
-            "#3b82f6","#10b981","#f59e0b","#ef4444","#8b5cf6","#06b6d4",
-            "#84cc16","#ec4899","#a855f7","#f97316","#22c55e","#0ea5e9",
-            "#eab308","#dc2626","#14b8a6","#64748b","#d946ef","#60a5fa"
-        ];
+                if (fecharMinhas) fecharMinhas.addEventListener('click', closeMinhas);
+                /* ---------- Paletas ---------- */
+                const urgencyColors = {
+                    "Crítica": "#ef4444", "Alta": "#f97316", "Média": "#3b82f6", "Baixa": "#6b7280", "Não definida": "#9ca3af"
+                };
+                const agentPalette = [
+                    "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4",
+                    "#84cc16", "#ec4899", "#a855f7", "#f97316", "#22c55e", "#0ea5e9",
+                    "#eab308", "#dc2626", "#14b8a6", "#64748b", "#d946ef", "#60a5fa"
+                ];
 
-        const DEFAULT_CARD_COLOR = "#2563eb";
-        const HEX_COLOR_REGEX = /^#[0-9A-Fa-f]{6}$/;
-        let userCardColors = {};
+                const DEFAULT_CARD_COLOR = "#2563eb";
+                const HEX_COLOR_REGEX = /^#[0-9A-Fa-f]{6}$/;
+                let userCardColors = {};
 
-        const toTicketKey = (id) => (id == null ? "" : String(id));
+                const toTicketKey = (id) => (id == null ? "" : String(id));
 
-        const normalizeHex = (hex) => {
-            if (typeof hex !== "string") return null;
-            const value = hex.trim();
-            return HEX_COLOR_REGEX.test(value) ? value.toLowerCase() : null;
-        };
+                const normalizeHex = (hex) => {
+                    if (typeof hex !== "string") return null;
+                    const value = hex.trim();
+                    return HEX_COLOR_REGEX.test(value) ? value.toLowerCase() : null;
+                };
 
-        const hexToRgb = (hex) => {
-            const value = normalizeHex(hex);
-            if (!value) return { r: 37, g: 99, b: 235 };
-            const clean = value.slice(1);
-            const num = parseInt(clean, 16);
-            if (Number.isNaN(num)) return { r: 37, g: 99, b: 235 };
-            return {
-                r: (num >> 16) & 255,
-                g: (num >> 8) & 255,
-                b: num & 255,
-            };
-        };
+                const hexToRgb = (hex) => {
+                    const value = normalizeHex(hex);
+                    if (!value) return { r: 37, g: 99, b: 235 };
+                    const clean = value.slice(1);
+                    const num = parseInt(clean, 16);
+                    if (Number.isNaN(num)) return { r: 37, g: 99, b: 235 };
+                    return {
+                        r: (num >> 16) & 255,
+                        g: (num >> 8) & 255,
+                        b: num & 255,
+                    };
+                };
 
-        const makeSoftColor = (hex, alpha = 0.18) => {
-            const { r, g, b } = hexToRgb(hex);
-            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-        };
+                const makeSoftColor = (hex, alpha = 0.18) => {
+                    const { r, g, b } = hexToRgb(hex);
+                    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+                };
 
-        const applyCardColor = (cardEl, hex) => {
-            if (!cardEl || !cardEl.style) return;
-            const value = normalizeHex(hex);
-            if (value) {
-                cardEl.classList.add("ticket-custom");
-                cardEl.style.setProperty("--ticket-custom-accent", value);
-                cardEl.style.setProperty("--ticket-custom-soft", makeSoftColor(value));
-            } else {
-                cardEl.classList.remove("ticket-custom");
-                cardEl.style.removeProperty("--ticket-custom-accent");
-                cardEl.style.removeProperty("--ticket-custom-soft");
-            }
-        };
+                const applyCardColor = (cardEl, hex) => {
+                    if (!cardEl || !cardEl.style) return;
+                    const value = normalizeHex(hex);
+                    if (value) {
+                        cardEl.classList.add("ticket-custom");
+                        cardEl.style.setProperty("--ticket-custom-accent", value);
+                        cardEl.style.setProperty("--ticket-custom-soft", makeSoftColor(value));
+                    } else {
+                        cardEl.classList.remove("ticket-custom");
+                        cardEl.style.removeProperty("--ticket-custom-accent");
+                        cardEl.style.removeProperty("--ticket-custom-soft");
+                    }
+                };
 
-        const getCardColor = (ticketId) => userCardColors[toTicketKey(ticketId)] || null;
+                const getCardColor = (ticketId) => userCardColors[toTicketKey(ticketId)] || null;
 
-        const showColorError = (message) => {
-            if (typeof window !== "undefined" && typeof window.alert === "function") {
-                window.alert(message);
-            } else {
-                console.warn(message);
-            }
-        };
+                const showColorError = (message) => {
+                    if (typeof window !== "undefined" && typeof window.alert === "function") {
+                        window.alert(message);
+                    } else {
+                        console.warn(message);
+                    }
+                };
 
-        const persistCardColor = async (ticketId, color) => {
-            const key = toTicketKey(ticketId);
-            const payload = { ticketId: key };
-            const normalized = normalizeHex(color);
-            if (normalized) {
-                payload.color = normalized;
-            }
-            try {
-                const resp = await fetch("/api/card-colors", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload),
-                });
-                if (!resp.ok) {
-                    const message = await resp.text();
-                    throw new Error(message || "Falha ao salvar cor personalizada");
-                }
-                const data = await resp.json();
-                if (data && typeof data.color === "string" && normalizeHex(data.color)) {
-                    userCardColors[key] = normalizeHex(data.color);
-                } else {
-                    delete userCardColors[key];
-                }
-                return data;
-            } catch (err) {
-                console.error("Erro ao persistir cor personalizada:", err);
-                throw err;
-            }
-        };
+                const persistCardColor = async (ticketId, color) => {
+                    const key = toTicketKey(ticketId);
+                    const payload = { ticketId: key };
+                    const normalized = normalizeHex(color);
+                    if (normalized) {
+                        payload.color = normalized;
+                    }
+                    try {
+                        const resp = await fetch("/api/card-colors", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify(payload),
+                        });
+                        if (!resp.ok) {
+                            const message = await resp.text();
+                            throw new Error(message || "Falha ao salvar cor personalizada");
+                        }
+                        const data = await resp.json();
+                        if (data && typeof data.color === "string" && normalizeHex(data.color)) {
+                            userCardColors[key] = normalizeHex(data.color);
+                        } else {
+                            delete userCardColors[key];
+                        }
+                        return data;
+                    } catch (err) {
+                        console.error("Erro ao persistir cor personalizada:", err);
+                        throw err;
+                    }
+                };
 
-        let userTicketOrder = {};
-        let dragState = null;
-        const ORDER_COLUMNS = ["novos", "atendimento", "parados", "vencidos"];
+                let userTicketOrder = {};
+                let dragState = null;
+                const ORDER_COLUMNS = ["novos", "atendimento", "parados", "vencidos"];
 
-        const persistTicketOrder = async (columnKey, order) => {
-            try {
-                await fetch("/api/ticket-order", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ columnKey, order }),
-                });
-            } catch (err) {
-                console.error("Erro ao salvar ordem de tickets:", err);
-            }
-        };
+                const persistTicketOrder = async (columnKey, order) => {
+                    try {
+                        await fetch("/api/ticket-order", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ columnKey, order }),
+                        });
+                    } catch (err) {
+                        console.error("Erro ao salvar ordem de tickets:", err);
+                    }
+                };
 
-        const getOrderIndexMap = (columnKey) => {
-            const saved = userTicketOrder[columnKey] || [];
-            const map = new Map();
-            saved.forEach((ticketId, index) => {
-                map.set(String(ticketId), index);
-            });
-            return map;
-        };
-
-        const registerCardDragEvents = (card, columnKey) => {
-            card.setAttribute("draggable", "true");
-            card.addEventListener("dragstart", (event) => {
-                dragState = { ticketId: card.dataset.ticketId, columnKey };
-                card.classList.add("dragging");
-                if (event.dataTransfer) {
-                    event.dataTransfer.effectAllowed = "move";
-                    event.dataTransfer.setData("text/plain", card.dataset.ticketId);
-                }
-            });
-            card.addEventListener("dragend", () => {
-                card.classList.remove("dragging");
-                dragState = null;
-            });
-        };
-
-        const computeDropIndex = (listElement, clientY) => {
-            const cards = Array.from(listElement.querySelectorAll(".ticket:not(.dragging)"));
-            for (let i = 0; i < cards.length; i += 1) {
-                const rect = cards[i].getBoundingClientRect();
-                if (clientY < rect.top + rect.height / 2) {
-                    return i;
-                }
-            }
-            return cards.length;
-        };
-
-        const ensureListDnDHandlers = (listElement, columnKey) => {
-            if (listElement.dataset.ddInit) return;
-            listElement.dataset.ddInit = "true";
-            listElement.addEventListener("dragover", (event) => {
-                if (!dragState || dragState.columnKey !== columnKey) return;
-                event.preventDefault();
-                listElement.classList.add("drop-target");
-            });
-            listElement.addEventListener("dragleave", () => {
-                listElement.classList.remove("drop-target");
-            });
-            listElement.addEventListener("drop", (event) => {
-                if (!dragState || dragState.columnKey !== columnKey) return;
-                event.preventDefault();
-                listElement.classList.remove("drop-target");
-                const { ticketId } = dragState;
-                const collection = colData[columnKey];
-                if (!collection) return;
-                const currentIndex = collection.findIndex((item) => String(item.id) === ticketId);
-                if (currentIndex === -1) return;
-                const dropIndex = computeDropIndex(listElement, event.clientY);
-                const [ticket] = collection.splice(currentIndex, 1);
-                let targetIndex = dropIndex;
-                if (targetIndex > collection.length) targetIndex = collection.length;
-                if (targetIndex > currentIndex) targetIndex -= 1;
-                collection.splice(targetIndex, 0, ticket);
-                userTicketOrder[columnKey] = collection.map((item) => String(item.id));
-                persistTicketOrder(columnKey, userTicketOrder[columnKey]);
-                dragState = null;
-                renderColumns();
-            });
-        };
-
-        /* ---------- Helpers ---------- */
-        const slug = (s) => (s||"").toString().normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();
-
-        // Palavras-chave: "contexto", "inativacao" (com ou sem acento) e "inativacao movidesk"
-        const matchesKeywordAlert = (ticket) => {
-            if (!ticket) return false;
-            const parts = [
-                ticket.subject,
-                ticket.status,
-                ticket.statusDetalhado,
-                ticket.statusDetailed,
-                ticket.category,
-                ticket.theme,
-                ticket.description
-            ];
-            if (Array.isArray(ticket.tags)) parts.push(ticket.tags.join(' '));
-            const st = slug(parts.filter(Boolean).join(' '));
-            const hasContexto   = st.includes("contexto") && st.includes("movidesk");
-            const hasInativacao = st.includes("inativacao") && st.includes("movidesk");
-            return hasContexto || hasInativacao;
-        };
-
-        const isCanceled = (t) =>
-            t.baseStatus==="Canceled" || t.baseStatus==="Cancelled" || String(t.status||"").toLowerCase().includes("cancelad");
-
-        // Status considerados "ativos" no front
-        const ACTIVE_BASE = new Set(["New","InAttendance","Stopped"]);
-
-        // Detecta status detalhado “Aguardando - Fornecedor”
-        const isAguardFornecedor = (t) => {
-            const s = slug(t.status || "");
-            return s.includes("aguard") && s.includes("fornecedor");
-        };
-
-        /* ---------- PRIORIDADE: holders/legend/donut ---------- */
-        const ensureDonutHolders = () => {
-            const card = document.getElementById("cardPrioridade");
-            let canvas = document.getElementById("graficoDonut");
-            let msg = document.getElementById("graficoMsg");
-            let legenda = document.getElementById("graficoLegenda");
-            if (!canvas){canvas=document.createElement("canvas");canvas.id="graficoDonut";card.querySelector("h3").after(canvas);}
-            if (!msg){msg=document.createElement("div");msg.id="graficoMsg";msg.className="graficoMsg";canvas.after(msg);}
-            if (!legenda){legenda=document.createElement("ul");legenda.id="graficoLegenda";legenda.className="legendList";msg.after(legenda);}
-            return {canvas,msg,legenda};
-        };
-
-        const renderLegend = (prioridades) => {
-            const { legenda } = ensureDonutHolders();
-            legenda.innerHTML="";
-            const labels = Object.keys(prioridades||{});
-            if (!labels.length) return;
-            labels.forEach((label)=>{
-                const qty = prioridades[label] ?? 0;
-                const color = urgencyColors[label] || "#9ca3af";
-                const li = document.createElement("li");
-                const left = document.createElement("div"); left.className="legendLeft";
-                const dot = document.createElement("span"); dot.className="legendDot"; dot.style.background=color;
-                const name = document.createElement("span"); name.className="legendName"; name.textContent=label;
-                left.appendChild(dot); left.appendChild(name);
-                const qtyEl = document.createElement("span"); qtyEl.className="legendQty"; qtyEl.textContent=qty;
-                li.appendChild(left); li.appendChild(qtyEl);
-                legenda.appendChild(li);
-            });
-        };
-
-        const renderDonut = (prioridades) => {
-            const { canvas, msg } = ensureDonutHolders();
-            if (window.graficoDonut){ try{window.graficoDonut.destroy();}catch(_){}}
-            const labels = Object.keys(prioridades||{});
-            const theVals = Object.values(prioridades||{});
-            if (!labels.length){ if (msg) msg.textContent="Sem dados para exibir."; renderLegend({}); return; }
-            else if (msg) msg.textContent="";
-            window.graficoDonut = new Chart(canvas,{
-                type:"doughnut",
-                data:{ labels, datasets:[{ data:theVals, backgroundColor:labels.map(urg=>urgencyColors[urg]||"#9ca3af") }]},
-                options:{ plugins:{ legend:{ display:false } }, cutout:"60%" }
-            });
-            renderLegend(prioridades);
-        };
-
-        /* ---------- AGENTES: holders/legend/donut + dropdown ---------- */
-        const ensureDonutHoldersAgents = () => {
-            const card = document.getElementById("cardAgentes");
-            let canvas = document.getElementById("graficoDonutAgents");
-            let msg = document.getElementById("graficoMsgAgents");
-            let legenda = document.getElementById("graficoLegendaAgents");
-            if (!canvas){canvas=document.createElement("canvas");canvas.id="graficoDonutAgents";card.querySelector("h3").after(canvas);}
-            if (!msg){msg=document.createElement("div");msg.id="graficoMsgAgents";msg.className="graficoMsg";canvas.after(msg);}
-            if (!legenda){legenda=document.createElement("ul");legenda.id="graficoLegendaAgents";legenda.className="legendList";msg.after(legenda);}
-            return {canvas,msg,legenda};
-        };
-
-        let agentIdsMap = {};
-        const renderLegendAgents = (mapa) => {
-            const { legenda } = ensureDonutHoldersAgents();
-            legenda.innerHTML="";
-            const labels = Object.keys(mapa||{});
-            if (!labels.length) return;
-            labels.forEach((name,i)=>{
-                const qty = mapa[name] ?? 0;
-                const color = agentPalette[i % agentPalette.length];
-                const li = document.createElement("li");
-                const left = document.createElement("div"); left.className="legendLeft";
-                const dot = document.createElement("span"); dot.className="legendDot"; dot.style.background=color;
-                const nm  = document.createElement("span"); nm.className="legendName"; nm.textContent=name;
-                left.appendChild(dot); left.appendChild(nm);
-                const qtyEl = document.createElement("span"); qtyEl.className="legendQty"; qtyEl.textContent=qty;
-
-                const drop = document.createElement("div");
-                drop.className="legendTickets";
-                drop.setAttribute("aria-hidden","true");
-                const ids = (agentIdsMap[name]||[]).slice().sort((a,b)=>Number(a)-Number(b));
-                ids.forEach(id=>{
-                    const badge=document.createElement("span");
-                    badge.className="legendTicketBadge";
-                    badge.textContent=`#${id}`;
-                    drop.appendChild(badge);
-                });
-
-                li.addEventListener("click",()=>{
-                    legenda.querySelectorAll(".legendTickets.show").forEach(el=>{
-                        if (el!==drop){el.classList.remove("show");el.setAttribute("aria-hidden","true");}
+                const getOrderIndexMap = (columnKey) => {
+                    const saved = userTicketOrder[columnKey] || [];
+                    const map = new Map();
+                    saved.forEach((ticketId, index) => {
+                        map.set(String(ticketId), index);
                     });
-                    const willShow=!drop.classList.contains("show");
-                    drop.classList.toggle("show",willShow);
-                    drop.setAttribute("aria-hidden",String(!willShow));
-                });
+                    return map;
+                };
 
-                li.appendChild(left); li.appendChild(qtyEl);
-                legenda.appendChild(li);
-                const container=document.createElement("div"); container.style.width="100%"; container.appendChild(drop);
-                legenda.appendChild(container);
-            });
-        };
+                const registerCardDragEvents = (card, columnKey) => {
+                    card.setAttribute("draggable", "true");
+                    card.addEventListener("dragstart", (event) => {
+                        dragState = { ticketId: card.dataset.ticketId, columnKey };
+                        card.classList.add("dragging");
+                        if (event.dataTransfer) {
+                            event.dataTransfer.effectAllowed = "move";
+                            event.dataTransfer.setData("text/plain", card.dataset.ticketId);
+                        }
+                    });
+                    card.addEventListener("dragend", () => {
+                        card.classList.remove("dragging");
+                        dragState = null;
+                    });
+                };
 
-        const renderDonutAgents = (mapa) => {
-            const { canvas, msg } = ensureDonutHoldersAgents();
-            if (window.graficoDonutAgents){ try{window.graficoDonutAgents.destroy();}catch(_){}}
-            const labels=Object.keys(mapa||{}), valores=Object.values(mapa||{});
-            if (!labels.length){ if (msg) msg.textContent="Sem dados para exibir."; renderLegendAgents({}); return; }
-            else if (msg) msg.textContent="";
-            const colors = labels.map((_,i)=>agentPalette[i%agentPalette.length]);
-            window.graficoDonutAgents = new Chart(canvas,{
-                type:"doughnut",
-                data:{ labels, datasets:[{ data:valores, backgroundColor:colors }]},
-                options:{ plugins:{ legend:{ display:false } }, cutout:"60%" }
-            });
-            renderLegendAgents(mapa);
-        };
+                const computeDropIndex = (listElement, clientY) => {
+                    const cards = Array.from(listElement.querySelectorAll(".ticket:not(.dragging)"));
+                    for (let i = 0; i < cards.length; i += 1) {
+                        const rect = cards[i].getBoundingClientRect();
+                        if (clientY < rect.top + rect.height / 2) {
+                            return i;
+                        }
+                    }
+                    return cards.length;
+                };
 
-        /* ---------- Paginação por coluna ---------- */
-        const PAGE = 5;
-        const colData = {novos:[],atendimento:[],parados:[],vencidos:[]};
-        const visibleCount = {novos:PAGE,atendimento:PAGE,parados:PAGE,vencidos:PAGE};
+                const ensureListDnDHandlers = (listElement, columnKey) => {
+                    if (listElement.dataset.ddInit) return;
+                    listElement.dataset.ddInit = "true";
+                    listElement.addEventListener("dragover", (event) => {
+                        if (!dragState || dragState.columnKey !== columnKey) return;
+                        event.preventDefault();
+                        listElement.classList.add("drop-target");
+                    });
+                    listElement.addEventListener("dragleave", () => {
+                        listElement.classList.remove("drop-target");
+                    });
+                    listElement.addEventListener("drop", (event) => {
+                        if (!dragState || dragState.columnKey !== columnKey) return;
+                        event.preventDefault();
+                        listElement.classList.remove("drop-target");
+                        const { ticketId } = dragState;
+                        const collection = colData[columnKey];
+                        if (!collection) return;
+                        const currentIndex = collection.findIndex((item) => String(item.id) === ticketId);
+                        if (currentIndex === -1) return;
+                        const dropIndex = computeDropIndex(listElement, event.clientY);
+                        const [ticket] = collection.splice(currentIndex, 1);
+                        let targetIndex = dropIndex;
+                        if (targetIndex > collection.length) targetIndex = collection.length;
+                        if (targetIndex > currentIndex) targetIndex -= 1;
+                        collection.splice(targetIndex, 0, ticket);
+                        userTicketOrder[columnKey] = collection.map((item) => String(item.id));
+                        persistTicketOrder(columnKey, userTicketOrder[columnKey]);
+                        dragState = null;
+                        renderColumns();
+                    });
+                };
 
-        /* ---------- Central de notificações (sino) ---------- */
-        const NOTIF_KEY = "movidesk.notifs";
-        const NOTIF_LAST_CLEAR_KEY = "movidesk.notifs.lastClear";
-        const ymdLocal = (d) => {
-            const y = d.getFullYear();
-            const m = String(d.getMonth()+1).padStart(2,"0");
-            const day = String(d.getDate()).padStart(2,"0");
-            return `${y}-${m}-${day}`;
-        };
+                /* ---------- Helpers ---------- */
+                const slug = (s) => (s || "").toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 
-        let notifStore = [];
-        const loadNotifs = () => {
-            try { notifStore = JSON.parse(localStorage.getItem(NOTIF_KEY)||"[]"); }
-            catch { notifStore = []; }
-        };
-        const saveNotifs = () => localStorage.setItem(NOTIF_KEY, JSON.stringify(notifStore));
+                // Palavras-chave: "contexto", "inativacao" (com ou sem acento) e "inativacao movidesk"
+                const matchesKeywordAlert = (ticket) => {
+                    if (!ticket) return false;
+                    const parts = [
+                        ticket.subject,
+                        ticket.status,
+                        ticket.statusDetalhado,
+                        ticket.statusDetailed,
+                        ticket.category,
+                        ticket.theme,
+                        ticket.description
+                    ];
+                    if (Array.isArray(ticket.tags)) parts.push(ticket.tags.join(' '));
+                    const st = slug(parts.filter(Boolean).join(' '));
+                    const hasContexto = st.includes("contexto") && st.includes("movidesk");
+                    const hasInativacao = st.includes("inativacao") && st.includes("movidesk");
+                    return hasContexto || hasInativacao;
+                };
 
-        const notifBtn   = document.getElementById("notifBtn");
-        theNotifCount = document.getElementById("notifCount");
-        const notifCount = theNotifCount; // alias só pra não quebrar quem já usa
-        const notifPanel = document.getElementById("notifPanel");
-        const notifList  = document.getElementById("notifList");
-        const notifClear = document.getElementById("notifClear");
+                const isCanceled = (t) =>
+                    t.baseStatus === "Canceled" || t.baseStatus === "Cancelled" || String(t.status || "").toLowerCase().includes("cancelad");
 
-        const renderNotifs = () => {
-            notifList.innerHTML = "";
-            if (!notifStore.length){
-                const li = document.createElement("li");
-                li.className = "notifItem";
-                li.innerHTML = "Nenhuma notificação por enquanto.";
-                notifList.appendChild(li);
-            } else {
-                notifStore
-                    .slice()
-                    .sort((a,b)=>b.time-a.time)
-                    .forEach(n => {
+                // Status considerados "ativos" no front
+                const ACTIVE_BASE = new Set(["New", "InAttendance", "Stopped"]);
+
+                // Detecta status detalhado “Aguardando - Fornecedor”
+                const isAguardFornecedor = (t) => {
+                    const s = slug(t.status || "");
+                    return s.includes("aguard") && s.includes("fornecedor");
+                };
+
+                /* ---------- PRIORIDADE: holders/legend/donut ---------- */
+                const ensureDonutHolders = () => {
+                    const card = document.getElementById("cardPrioridade");
+                    let canvas = document.getElementById("graficoDonut");
+                    let msg = document.getElementById("graficoMsg");
+                    let legenda = document.getElementById("graficoLegenda");
+                    if (!canvas) { canvas = document.createElement("canvas"); canvas.id = "graficoDonut"; card.querySelector("h3").after(canvas); }
+                    if (!msg) { msg = document.createElement("div"); msg.id = "graficoMsg"; msg.className = "graficoMsg"; canvas.after(msg); }
+                    if (!legenda) { legenda = document.createElement("ul"); legenda.id = "graficoLegenda"; legenda.className = "legendList"; msg.after(legenda); }
+                    return { canvas, msg, legenda };
+                };
+
+                const renderLegend = (prioridades) => {
+                    const { legenda } = ensureDonutHolders();
+                    legenda.innerHTML = "";
+                    const labels = Object.keys(prioridades || {});
+                    if (!labels.length) return;
+                    labels.forEach((label) => {
+                        const qty = prioridades[label] ?? 0;
+                        const color = urgencyColors[label] || "#9ca3af";
+                        const li = document.createElement("li");
+                        const left = document.createElement("div"); left.className = "legendLeft";
+                        const dot = document.createElement("span"); dot.className = "legendDot"; dot.style.background = color;
+                        const name = document.createElement("span"); name.className = "legendName"; name.textContent = label;
+                        left.appendChild(dot); left.appendChild(name);
+                        const qtyEl = document.createElement("span"); qtyEl.className = "legendQty"; qtyEl.textContent = qty;
+                        li.appendChild(left); li.appendChild(qtyEl);
+                        legenda.appendChild(li);
+                    });
+                };
+
+                const renderDonut = (prioridades) => {
+                    const { canvas, msg } = ensureDonutHolders();
+                    if (window.graficoDonut) { try { window.graficoDonut.destroy(); } catch (_) { } }
+                    const labels = Object.keys(prioridades || {});
+                    const theVals = Object.values(prioridades || {});
+                    if (!labels.length) { if (msg) msg.textContent = "Sem dados para exibir."; renderLegend({}); return; }
+                    else if (msg) msg.textContent = "";
+                    window.graficoDonut = new Chart(canvas, {
+                        type: "doughnut",
+                        data: { labels, datasets: [{ data: theVals, backgroundColor: labels.map(urg => urgencyColors[urg] || "#9ca3af") }] },
+                        options: { plugins: { legend: { display: false } }, cutout: "60%" }
+                    });
+                    renderLegend(prioridades);
+                };
+
+                /* ---------- AGENTES: holders/legend/donut + dropdown ---------- */
+                const ensureDonutHoldersAgents = () => {
+                    const card = document.getElementById("cardAgentes");
+                    let canvas = document.getElementById("graficoDonutAgents");
+                    let msg = document.getElementById("graficoMsgAgents");
+                    let legenda = document.getElementById("graficoLegendaAgents");
+                    if (!canvas) { canvas = document.createElement("canvas"); canvas.id = "graficoDonutAgents"; card.querySelector("h3").after(canvas); }
+                    if (!msg) { msg = document.createElement("div"); msg.id = "graficoMsgAgents"; msg.className = "graficoMsg"; canvas.after(msg); }
+                    if (!legenda) { legenda = document.createElement("ul"); legenda.id = "graficoLegendaAgents"; legenda.className = "legendList"; msg.after(legenda); }
+                    return { canvas, msg, legenda };
+                };
+
+                let agentIdsMap = {};
+                const renderLegendAgents = (mapa) => {
+                    const { legenda } = ensureDonutHoldersAgents();
+                    legenda.innerHTML = "";
+                    const labels = Object.keys(mapa || {});
+                    if (!labels.length) return;
+                    labels.forEach((name, i) => {
+                        const qty = mapa[name] ?? 0;
+                        const color = agentPalette[i % agentPalette.length];
+                        const li = document.createElement("li");
+                        const left = document.createElement("div"); left.className = "legendLeft";
+                        const dot = document.createElement("span"); dot.className = "legendDot"; dot.style.background = color;
+                        const nm = document.createElement("span"); nm.className = "legendName"; nm.textContent = name;
+                        left.appendChild(dot); left.appendChild(nm);
+                        const qtyEl = document.createElement("span"); qtyEl.className = "legendQty"; qtyEl.textContent = qty;
+
+                        const drop = document.createElement("div");
+                        drop.className = "legendTickets";
+                        drop.setAttribute("aria-hidden", "true");
+                        const ids = (agentIdsMap[name] || []).slice().sort((a, b) => Number(a) - Number(b));
+                        ids.forEach(id => {
+                            const badge = document.createElement("span");
+                            badge.className = "legendTicketBadge";
+                            badge.textContent = `#${id}`;
+                            drop.appendChild(badge);
+                        });
+
+                        li.addEventListener("click", () => {
+                            legenda.querySelectorAll(".legendTickets.show").forEach(el => {
+                                if (el !== drop) { el.classList.remove("show"); el.setAttribute("aria-hidden", "true"); }
+                            });
+                            const willShow = !drop.classList.contains("show");
+                            drop.classList.toggle("show", willShow);
+                            drop.setAttribute("aria-hidden", String(!willShow));
+                        });
+
+                        li.appendChild(left); li.appendChild(qtyEl);
+                        legenda.appendChild(li);
+                        const container = document.createElement("div"); container.style.width = "100%"; container.appendChild(drop);
+                        legenda.appendChild(container);
+                    });
+                };
+
+                const renderDonutAgents = (mapa) => {
+                    const { canvas, msg } = ensureDonutHoldersAgents();
+                    if (window.graficoDonutAgents) { try { window.graficoDonutAgents.destroy(); } catch (_) { } }
+                    const labels = Object.keys(mapa || {}), valores = Object.values(mapa || {});
+                    if (!labels.length) { if (msg) msg.textContent = "Sem dados para exibir."; renderLegendAgents({}); return; }
+                    else if (msg) msg.textContent = "";
+                    const colors = labels.map((_, i) => agentPalette[i % agentPalette.length]);
+                    window.graficoDonutAgents = new Chart(canvas, {
+                        type: "doughnut",
+                        data: { labels, datasets: [{ data: valores, backgroundColor: colors }] },
+                        options: { plugins: { legend: { display: false } }, cutout: "60%" }
+                    });
+                    renderLegendAgents(mapa);
+                };
+
+                /* ---------- Paginação por coluna ---------- */
+                const PAGE = 5;
+                const colData = { novos: [], atendimento: [], parados: [], vencidos: [] };
+                const visibleCount = { novos: PAGE, atendimento: PAGE, parados: PAGE, vencidos: PAGE };
+
+                /* ---------- Central de notificações (sino) ---------- */
+                const NOTIF_KEY = "movidesk.notifs";
+                const NOTIF_LAST_CLEAR_KEY = "movidesk.notifs.lastClear";
+                const ymdLocal = (d) => {
+                    const y = d.getFullYear();
+                    const m = String(d.getMonth() + 1).padStart(2, "0");
+                    const day = String(d.getDate()).padStart(2, "0");
+                    return `${y}-${m}-${day}`;
+                };
+
+                let notifStore = [];
+                const loadNotifs = () => {
+                    try { notifStore = JSON.parse(localStorage.getItem(NOTIF_KEY) || "[]"); }
+                    catch { notifStore = []; }
+                };
+                const saveNotifs = () => localStorage.setItem(NOTIF_KEY, JSON.stringify(notifStore));
+
+                const notifBtn = document.getElementById("notifBtn");
+                theNotifCount = document.getElementById("notifCount");
+                const notifCount = theNotifCount; // alias só pra não quebrar quem já usa
+                const notifPanel = document.getElementById("notifPanel");
+                const notifList = document.getElementById("notifList");
+                const notifClear = document.getElementById("notifClear");
+
+                const renderNotifs = () => {
+                    notifList.innerHTML = "";
+                    if (!notifStore.length) {
                         const li = document.createElement("li");
                         li.className = "notifItem";
-                        const dt = new Date(n.time);
-                        li.innerHTML = `<b>#${n.id}</b> — ${n.subject}<br><small>${dt.toLocaleString()}</small>`;
-                        li.addEventListener("click", ()=>{
-                            notifPanel.classList.remove("show");
-                            notifPanel.setAttribute("aria-hidden","true");
-                            focusTicketById(n.id);
-                        });
+                        li.innerHTML = "Nenhuma notificação por enquanto.";
                         notifList.appendChild(li);
-                    });
-            }
-
-            if (notifStore.length){
-                notifCount.hidden = false;
-                notifCount.textContent = String(notifStore.length);
-            } else {
-                notifCount.hidden = true;
-            }
-        };
-
-        const pushNotif = ({id, subject}) => {
-            if (!notifStore.some(n => n.id === id)){
-                notifStore.push({ id, subject, time: Date.now() });
-                saveNotifs(); renderNotifs();
-            }
-        };
-
-        const clearNotifs = () => {
-            notifStore = [];
-            saveNotifs();
-            renderNotifs();
-            localStorage.setItem(NOTIF_LAST_CLEAR_KEY, ymdLocal(new Date()));
-        };
-
-        notifBtn.addEventListener("click", ()=>{
-            const showing = notifPanel.classList.toggle("show");
-            notifPanel.setAttribute("aria-hidden", String(!showing));
-        });
-        notifClear.addEventListener("click", ()=>{ clearNotifs(); });
-        document.addEventListener("click", (ev)=>{
-            if (!notifPanel.contains(ev.target) && !notifBtn.contains(ev.target)){
-                notifPanel.classList.remove("show");
-                notifPanel.setAttribute("aria-hidden","true");
-            }
-        });
-        loadNotifs(); renderNotifs();
-
-        // Limpeza diária às 18h (horário do navegador)
-        const scheduleDailyNotifClearAt18 = () => {
-            const now = new Date();
-            const todayISO = ymdLocal(now);
-            const last = localStorage.getItem(NOTIF_LAST_CLEAR_KEY) || "";
-
-            const today18 = new Date(); today18.setHours(18,0,0,0);
-            if (now >= today18 && last !== todayISO) {
-                clearNotifs();
-            }
-
-            const next = new Date(); next.setHours(18,0,0,0);
-            if (now >= next) next.setDate(next.getDate() + 1);
-
-            const msUntilNext = next.getTime() - now.getTime();
-            setTimeout(() => {
-                clearNotifs();
-                setInterval(clearNotifs, 24*60*60*1000);
-            }, msUntilNext);
-        };
-        scheduleDailyNotifClearAt18();
-
-        /* ---------- Modal de Palavras-chave ---------- */
-        const alertedIds = new Set(); // tickets já alertados nesta sessão
-        let alertAutoTimer = null;    // timer para fechar modal em 1 min
-
-        const closeInativacaoModal = () => {
-            const overlay = document.getElementById("inativacaoOverlay");
-            overlay.classList.remove("show");
-            overlay.setAttribute("aria-hidden","true");
-            if (alertAutoTimer){ clearTimeout(alertAutoTimer); alertAutoTimer = null; }
-        };
-
-        const openInativacaoModal = (items) => {
-            if (!items.length) return;
-            const overlay = document.getElementById("inativacaoOverlay");
-            const list = document.getElementById("inativacaoList");
-            list.innerHTML = "";
-            items.forEach(({id, subject}) => {
-                const li = document.createElement("li");
-                li.textContent = `#${id} — ${subject}`;
-                li.addEventListener("click", () => {
-                    closeInativacaoModal();
-                    focusTicketById(id);
-                });
-                list.appendChild(li);
-            });
-            overlay.classList.add("show");
-            overlay.setAttribute("aria-hidden","false");
-
-            // fecha sozinho em 60s
-            if (alertAutoTimer) clearTimeout(alertAutoTimer);
-            alertAutoTimer = setTimeout(closeInativacaoModal, 60_000);
-        };
-
-        document.getElementById("inativacaoClose").addEventListener("click", closeInativacaoModal);
-
-        /* ---------- Cards ---------- */
-        const buildTicketCard = (t) => {
-            const statusSlug = slug(t.status || "nao definido");
-            const urgSlug  = slug(t.urgency || "Não definida");
-
-            let prevSolTxt = "-", prevClass = "gray";
-            if (t.previsaoSolucao){
-                const today = new Date(); const baseToday = new Date(today.getFullYear(),today.getMonth(),today.getDate());
-                const due = new Date(t.previsaoSolucao+"T23:59:59");
-                const diffDays = Math.ceil((due - baseToday)/86400000);
-                prevSolTxt = due.toLocaleDateString();
-                if (diffDays < 0 || t.overdue) prevClass = "red";
-                else if (diffDays <= 2)       prevClass = "orange";
-                else                          prevClass = "green";
-            }
-
-            const hasAlert = matchesKeywordAlert(t);
-
-            const card = document.createElement("div");
-            card.className = "ticket ticket-can-edit-color";
-            card.dataset.ticketId = t.id;
-            if (hasAlert) {
-                card.classList.add("alert","ticket-flagged");
-                card.dataset.flagged = "inativacao";
-            }
-
-            if (t.overdue && !hasAlert) card.style.outline = "2px solid rgba(220,38,38,.45)";
-
-            card.innerHTML = `
-      <div class="ticket-summary">
-        <h4>#${t.id} - ${t.subject}</h4>
-      </div>
-      <div class="ticket-details">
-        <p><b>Urgência:</b> <span class="pill urg-${urgSlug}">${t.urgency || "Não definida"}</span></p>
-        <p><b>Status detalhado:</b> <span class="statusDetalhado status-${statusSlug}">${t.status || "Não definido"}</span></p>
-        <p><b>Prev. solução:</b> <span class="badgePrev ${prevClass}">${prevSolTxt}</span></p>
-        <div class="responsavelBox">
-          <span class="badge responsavel">${t.owner}</span>
-        </div>
-        <small>Criado em ${t.createdDate ? new Date(t.createdDate).toLocaleDateString() : "-"}</small>
-      </div>
-    `;
-
-            const currentColor = getCardColor(t.id);
-            applyCardColor(card, currentColor);
-
-            const actions = document.createElement("div");
-            actions.className = "ticketActions";
-
-            const colorBtn = document.createElement("button");
-            colorBtn.type = "button";
-            colorBtn.className = "ticketColorBtn";
-            colorBtn.title = "Alterar cor do card";
-            colorBtn.setAttribute("aria-label", "Alterar cor do card");
-            colorBtn.innerHTML = '<svg class="ticketColorIcon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 20h4l9.6-9.6a2.2 2.2 0 0 0-3.1-3.1L5 12.8V20z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6"></path><path d="M12.5 6.5l5 5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6"></path></svg>';
-            if (currentColor) {
-                colorBtn.style.setProperty("--ticket-btn-color", currentColor);
-            }
-
-            const colorInput = document.createElement("input");
-            colorInput.type = "color";
-            colorInput.className = "ticketColorInput";
-            colorInput.value = currentColor || DEFAULT_CARD_COLOR;
-
-            const openColorPicker = () => {
-                if (typeof colorInput.showPicker === "function") {
-                    colorInput.showPicker();
-                } else {
-                    colorInput.click();
-                }
-            };
-
-            colorInput.addEventListener("input", (event) => {
-                const preview = normalizeHex(event.target.value);
-                if (!preview) return;
-                applyCardColor(card, preview);
-                colorBtn.style.setProperty("--ticket-btn-color", preview);
-            });
-
-            colorInput.addEventListener("change", async (event) => {
-                const chosen = normalizeHex(event.target.value);
-                const previous = getCardColor(t.id);
-                if (!chosen) {
-                    event.target.value = previous || DEFAULT_CARD_COLOR;
-                    return;
-                }
-                if (chosen === previous) {
-                    applyCardColor(card, chosen);
-                    colorBtn.style.setProperty("--ticket-btn-color", chosen);
-                    return;
-                }
-
-                applyCardColor(card, chosen);
-                colorBtn.style.setProperty("--ticket-btn-color", chosen);
-
-                try {
-                    const result = await persistCardColor(t.id, chosen);
-                    const saved = normalizeHex(result && result.color) || chosen;
-                    applyCardColor(card, saved);
-                    colorBtn.style.setProperty("--ticket-btn-color", saved);
-                    colorInput.value = saved;
-                } catch (err) {
-                    console.error("Erro ao salvar cor personalizada:", err);
-                    if (previous) {
-                        applyCardColor(card, previous);
-                        colorBtn.style.setProperty("--ticket-btn-color", previous);
-                        colorInput.value = previous;
                     } else {
+                        notifStore
+                            .slice()
+                            .sort((a, b) => b.time - a.time)
+                            .forEach(n => {
+                                const li = document.createElement("li");
+                                li.className = "notifItem";
+                                const dt = new Date(n.time);
+                                li.innerHTML = `<b>#${n.id}</b> — ${n.subject}<br><small>${dt.toLocaleString()}</small>`;
+                                li.addEventListener("click", () => {
+                                    notifPanel.classList.remove("show");
+                                    notifPanel.setAttribute("aria-hidden", "true");
+                                    focusTicketById(n.id);
+                                });
+                                notifList.appendChild(li);
+                            });
+                    }
+
+                    if (notifStore.length) {
+                        notifCount.hidden = false;
+                        notifCount.textContent = String(notifStore.length);
+                    } else {
+                        notifCount.hidden = true;
+                    }
+                };
+
+                const pushNotif = ({ id, subject }) => {
+                    if (!notifStore.some(n => n.id === id)) {
+                        notifStore.push({ id, subject, time: Date.now() });
+                        saveNotifs(); renderNotifs();
+                    }
+                };
+
+                const clearNotifs = () => {
+                    notifStore = [];
+                    saveNotifs();
+                    renderNotifs();
+                    localStorage.setItem(NOTIF_LAST_CLEAR_KEY, ymdLocal(new Date()));
+                };
+
+                notifBtn.addEventListener("click", () => {
+                    const showing = notifPanel.classList.toggle("show");
+                    notifPanel.setAttribute("aria-hidden", String(!showing));
+                });
+                notifClear.addEventListener("click", () => { clearNotifs(); });
+                document.addEventListener("click", (ev) => {
+                    if (!notifPanel.contains(ev.target) && !notifBtn.contains(ev.target)) {
+                        notifPanel.classList.remove("show");
+                        notifPanel.setAttribute("aria-hidden", "true");
+                    }
+                });
+                loadNotifs(); renderNotifs();
+
+                // Limpeza diária às 18h (horário do navegador)
+                const scheduleDailyNotifClearAt18 = () => {
+                    const now = new Date();
+                    const todayISO = ymdLocal(now);
+                    const last = localStorage.getItem(NOTIF_LAST_CLEAR_KEY) || "";
+
+                    const today18 = new Date(); today18.setHours(18, 0, 0, 0);
+                    if (now >= today18 && last !== todayISO) {
+                        clearNotifs();
+                    }
+
+                    const next = new Date(); next.setHours(18, 0, 0, 0);
+                    if (now >= next) next.setDate(next.getDate() + 1);
+
+                    const msUntilNext = next.getTime() - now.getTime();
+                    setTimeout(() => {
+                        clearNotifs();
+                        setInterval(clearNotifs, 24 * 60 * 60 * 1000);
+                    }, msUntilNext);
+                };
+                scheduleDailyNotifClearAt18();
+
+                /* ---------- Modal de Palavras-chave ---------- */
+                const alertedIds = new Set(); // tickets já alertados nesta sessão
+                let alertAutoTimer = null;    // timer para fechar modal em 1 min
+
+                const closeInativacaoModal = () => {
+                    const overlay = document.getElementById("inativacaoOverlay");
+                    overlay.classList.remove("show");
+                    overlay.setAttribute("aria-hidden", "true");
+                    if (alertAutoTimer) { clearTimeout(alertAutoTimer); alertAutoTimer = null; }
+                };
+
+                const openInativacaoModal = (items) => {
+                    if (!items.length) return;
+                    const overlay = document.getElementById("inativacaoOverlay");
+                    const list = document.getElementById("inativacaoList");
+                    list.innerHTML = "";
+                    items.forEach(({ id, subject }) => {
+                        const li = document.createElement("li");
+                        li.textContent = `#${id} — ${subject}`;
+                        li.addEventListener("click", () => {
+                            closeInativacaoModal();
+                            focusTicketById(id);
+                        });
+                        list.appendChild(li);
+                    });
+                    overlay.classList.add("show");
+                    overlay.setAttribute("aria-hidden", "false");
+
+                    // fecha sozinho em 60s
+                    if (alertAutoTimer) clearTimeout(alertAutoTimer);
+                    alertAutoTimer = setTimeout(closeInativacaoModal, 60_000);
+                };
+
+                document.getElementById("inativacaoClose").addEventListener("click", closeInativacaoModal);
+
+                /* ---------- Cards ---------- */
+                const buildTicketCard = (t) => {
+                    const statusSlug = slug(t.status || "nao definido");
+                    const urgSlug = slug(t.urgency || "Não definida");
+
+                    let prevSolTxt = "-", prevClass = "gray";
+                    if (t.previsaoSolucao) {
+                        const today = new Date(); const baseToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                        const due = new Date(t.previsaoSolucao + "T23:59:59");
+                        const diffDays = Math.ceil((due - baseToday) / 86400000);
+                        prevSolTxt = due.toLocaleDateString();
+                        if (diffDays < 0 || t.overdue) prevClass = "red";
+                        else if (diffDays <= 2) prevClass = "orange";
+                        else prevClass = "green";
+                    }
+
+                    const hasAlert = matchesKeywordAlert(t);
+
+                    const card = document.createElement("div");
+                    card.className = "ticket ticket-can-edit-color";
+                    card.dataset.ticketId = t.id;
+                    if (hasAlert) {
+                        card.classList.add("alert", "ticket-flagged");
+                        card.dataset.flagged = "inativacao";
+                    }
+
+                    if (t.overdue && !hasAlert) card.style.outline = "2px solid rgba(220,38,38,.45)";
+
+                    <!-- trecho atualizado dentro da função buildTicketCard -->
+                    card.innerHTML = `
+                <div class="ticket-summary">
+                <h4>#${t.id} - ${t.subject}</h4>
+<p class="responsavel">
+  <b</b> <span class="nome">${t.owner || "Não atribuído"}</span>
+</p>
+  </div>
+  <div class="ticket-details">
+    <p><b>Urgência:</b> <span class="pill urg-${urgSlug}">${t.urgency || "Não definida"}</span></p>
+    <p><b>Status detalhado:</b> <span class="statusDetalhado status-${statusSlug}">${t.status || "Não definido"}</span></p>
+    <p><b>Prev. solução:</b> <span class="badgePrev ${prevClass}">${prevSolTxt}</span></p>
+    <small>Criado em ${t.createdDate ? new Date(t.createdDate).toLocaleDateString() : "-"}</small>
+  </div>
+`;
+
+
+
+                    const currentColor = getCardColor(t.id);
+                    applyCardColor(card, currentColor);
+
+                    const actions = document.createElement("div");
+                    actions.className = "ticketActions";
+
+                    const colorBtn = document.createElement("button");
+                    colorBtn.type = "button";
+                    colorBtn.className = "ticketColorBtn";
+                    colorBtn.title = "Alterar cor do card";
+                    colorBtn.setAttribute("aria-label", "Alterar cor do card");
+                    colorBtn.innerHTML = '<svg class="ticketColorIcon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 20h4l9.6-9.6a2.2 2.2 0 0 0-3.1-3.1L5 12.8V20z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6"></path><path d="M12.5 6.5l5 5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6"></path></svg>';
+                    if (currentColor) {
+                        colorBtn.style.setProperty("--ticket-btn-color", currentColor);
+                    }
+
+                    const colorInput = document.createElement("input");
+                    colorInput.type = "color";
+                    colorInput.className = "ticketColorInput";
+                    colorInput.value = currentColor || DEFAULT_CARD_COLOR;
+
+                    const openColorPicker = () => {
+                        if (typeof colorInput.showPicker === "function") {
+                            colorInput.showPicker();
+                        } else {
+                            colorInput.click();
+                        }
+                    };
+
+                    colorInput.addEventListener("input", (event) => {
+                        const preview = normalizeHex(event.target.value);
+                        if (!preview) return;
+                        applyCardColor(card, preview);
+                        colorBtn.style.setProperty("--ticket-btn-color", preview);
+                    });
+
+                    colorInput.addEventListener("change", async (event) => {
+                        const chosen = normalizeHex(event.target.value);
+                        const previous = getCardColor(t.id);
+                        if (!chosen) {
+                            event.target.value = previous || DEFAULT_CARD_COLOR;
+                            return;
+                        }
+                        if (chosen === previous) {
+                            applyCardColor(card, chosen);
+                            colorBtn.style.setProperty("--ticket-btn-color", chosen);
+                            return;
+                        }
+
+                        applyCardColor(card, chosen);
+                        colorBtn.style.setProperty("--ticket-btn-color", chosen);
+
+                        try {
+                            const result = await persistCardColor(t.id, chosen);
+                            const saved = normalizeHex(result && result.color) || chosen;
+                            applyCardColor(card, saved);
+                            colorBtn.style.setProperty("--ticket-btn-color", saved);
+                            colorInput.value = saved;
+                        } catch (err) {
+                            console.error("Erro ao salvar cor personalizada:", err);
+                            if (previous) {
+                                applyCardColor(card, previous);
+                                colorBtn.style.setProperty("--ticket-btn-color", previous);
+                                colorInput.value = previous;
+                            } else {
+                                applyCardColor(card, null);
+                                colorBtn.style.removeProperty("--ticket-btn-color");
+                                colorInput.value = DEFAULT_CARD_COLOR;
+                            }
+                            showColorError("Não foi possível salvar a cor. Tente novamente.");
+                        }
+                    });
+
+
+
+                    colorInput.addEventListener("click", (event) => {
+                        event.stopPropagation();
+                    });
+                    colorInput.addEventListener("pointerdown", (event) => {
+                        event.stopPropagation();
+                    });
+                    const resetBtn = document.createElement("button");
+                    resetBtn.type = "button";
+                    resetBtn.className = "ticketColorReset";
+                    resetBtn.title = "Remover cor personalizada";
+
+                    resetBtn.addEventListener("click", async (event) => {
+                        event.stopPropagation();
+                        const previous = getCardColor(t.id);
                         applyCardColor(card, null);
                         colorBtn.style.removeProperty("--ticket-btn-color");
                         colorInput.value = DEFAULT_CARD_COLOR;
-                    }
-                    showColorError("Não foi possível salvar a cor. Tente novamente.");
-                }
-            });
-
-
-
-            colorInput.addEventListener("click", (event) => {
-                event.stopPropagation();
-            });
-            colorInput.addEventListener("pointerdown", (event) => {
-                event.stopPropagation();
-            });
-            const resetBtn = document.createElement("button");
-            resetBtn.type = "button";
-            resetBtn.className = "ticketColorReset";
-            resetBtn.title = "Remover cor personalizada";
-
-            resetBtn.addEventListener("click", async (event) => {
-                event.stopPropagation();
-                const previous = getCardColor(t.id);
-                applyCardColor(card, null);
-                colorBtn.style.removeProperty("--ticket-btn-color");
-                colorInput.value = DEFAULT_CARD_COLOR;
-                try {
-                    await persistCardColor(t.id, null);
-                } catch (err) {
-                    console.error("Erro ao remover cor personalizada:", err);
-                    if (previous) {
-                        applyCardColor(card, previous);
-                        colorBtn.style.setProperty("--ticket-btn-color", previous);
-                        colorInput.value = previous;
-                    }
-                    showColorError("Não foi possível remover a cor. Tente novamente.");
-                }
-            });
-
-            colorBtn.addEventListener("click", (event) => {
-                event.stopPropagation();
-                openColorPicker();
-            });
-
-            actions.append(colorBtn, resetBtn, colorInput);
-
-            card.appendChild(actions);
-
-            card.setAttribute("tabindex", "0");
-
-            card.setAttribute("aria-expanded", "false");
-
-            const toggleCardExpansion = () => {
-
-                const expanded = card.classList.toggle("expanded");
-
-                card.setAttribute("aria-expanded", expanded ? "true" : "false");
-
-            };
-
-            card.addEventListener("click", (event) => {
-
-                if (event.target.closest(".ticketActions")) return;
-
-                toggleCardExpansion();
-
-            });
-
-            card.addEventListener("keydown", (event) => {
-
-                if (event.target.closest(".ticketActions")) return;
-
-                if (event.key === "Enter" || event.key === " ") {
-
-                    event.preventDefault();
-
-                    toggleCardExpansion();
-
-                }
-
-            });
-
-            return card;
-
-       };
-
-        const renderColumns = () => {
-            document.getElementById("countNovos").textContent       = colData.novos.length;
-            document.getElementById("countAtendimento").textContent = colData.atendimento.length;
-            document.getElementById("countParados").textContent     = colData.parados.length;
-            document.getElementById("countVencidos").textContent    = colData.vencidos.length;
-
-            const defs = [
-                {key:"novos",listId:"novosLista",btnSel:'button[data-col="novos"]'},
-                {key:"atendimento",listId:"atendimentoLista",btnSel:'button[data-col="atendimento"]'},
-                {key:"parados",listId:"paradosLista",btnSel:'button[data-col="parados"]'},
-                {key:"vencidos",listId:"vencidosLista",btnSel:'button[data-col="vencidos"]'},
-            ];
-
-            defs.forEach(({key,listId,btnSel})=>{
-                const list=document.getElementById(listId);
-                const btn=document.querySelector(btnSel);
-                if (!list) return;
-                list.innerHTML="";
-                list.dataset.columnKey = key;
-                ensureListDnDHandlers(list, key);
-                const total=colData[key].length;
-                const showN=Math.min(visibleCount[key], total);
-                const orderIndex = getOrderIndexMap(key);
-                const hasSavedOrder = orderIndex.size > 0;
-                const ordered = colData[key].slice().sort((a,b)=>{
-                    const aId = String(a.id);
-                    const bId = String(b.id);
-                    const aHasOrder = orderIndex.has(aId);
-                    const bHasOrder = orderIndex.has(bId);
-                    if (hasSavedOrder && (aHasOrder || bHasOrder)) {
-                        if (aHasOrder && bHasOrder) {
-                            return orderIndex.get(aId) - orderIndex.get(bId);
+                        try {
+                            await persistCardColor(t.id, null);
+                        } catch (err) {
+                            console.error("Erro ao remover cor personalizada:", err);
+                            if (previous) {
+                                applyCardColor(card, previous);
+                                colorBtn.style.setProperty("--ticket-btn-color", previous);
+                                colorInput.value = previous;
+                            }
+                            showColorError("Não foi possível remover a cor. Tente novamente.");
                         }
-                        return aHasOrder ? -1 : 1;
+                    });
+
+                    colorBtn.addEventListener("click", (event) => {
+                        event.stopPropagation();
+                        openColorPicker();
+                    });
+
+                    actions.append(colorBtn, resetBtn, colorInput);
+
+                    card.appendChild(actions);
+
+                    card.setAttribute("tabindex", "0");
+
+                    card.setAttribute("aria-expanded", "false");
+
+                    const toggleCardExpansion = () => {
+
+                        const expanded = card.classList.toggle("expanded");
+
+                        card.setAttribute("aria-expanded", expanded ? "true" : "false");
+
+                    };
+
+                    card.addEventListener("click", (event) => {
+
+                        if (event.target.closest(".ticketActions")) return;
+
+                        toggleCardExpansion();
+
+                    });
+
+                    card.addEventListener("keydown", (event) => {
+
+                        if (event.target.closest(".ticketActions")) return;
+
+                        if (event.key === "Enter" || event.key === " ") {
+
+                            event.preventDefault();
+
+                            toggleCardExpansion();
+
+                        }
+
+                    });
+
+                    return card;
+
+                };
+
+                const renderColumns = () => {
+                    document.getElementById("countNovos").textContent = colData.novos.length;
+                    document.getElementById("countAtendimento").textContent = colData.atendimento.length;
+                    document.getElementById("countParados").textContent = colData.parados.length;
+                    document.getElementById("countVencidos").textContent = colData.vencidos.length;
+
+                    const defs = [
+                        { key: "novos", listId: "novosLista", btnSel: 'button[data-col="novos"]' },
+                        { key: "atendimento", listId: "atendimentoLista", btnSel: 'button[data-col="atendimento"]' },
+                        { key: "parados", listId: "paradosLista", btnSel: 'button[data-col="parados"]' },
+                        { key: "vencidos", listId: "vencidosLista", btnSel: 'button[data-col="vencidos"]' },
+                    ];
+
+                    defs.forEach(({ key, listId, btnSel }) => {
+                        const list = document.getElementById(listId);
+                        const btn = document.querySelector(btnSel);
+                        if (!list) return;
+                        list.innerHTML = "";
+                        list.dataset.columnKey = key;
+                        ensureListDnDHandlers(list, key);
+                        const total = colData[key].length;
+                        const showN = Math.min(visibleCount[key], total);
+                        const orderIndex = getOrderIndexMap(key);
+                        const hasSavedOrder = orderIndex.size > 0;
+                        const ordered = colData[key].slice().sort((a, b) => {
+                            const aId = String(a.id);
+                            const bId = String(b.id);
+                            const aHasOrder = orderIndex.has(aId);
+                            const bHasOrder = orderIndex.has(bId);
+                            if (hasSavedOrder && (aHasOrder || bHasOrder)) {
+                                if (aHasOrder && bHasOrder) {
+                                    return orderIndex.get(aId) - orderIndex.get(bId);
+                                }
+                                return aHasOrder ? -1 : 1;
+                            }
+                            const aFlag = matchesKeywordAlert(a);
+                            const bFlag = matchesKeywordAlert(b);
+                            if (aFlag !== bFlag) return aFlag ? -1 : 1;
+                            return 0;
+                        });
+                        ordered.slice(0, showN).forEach(t => {
+                            const card = buildTicketCard(t);
+                            card.dataset.ticketId = String(t.id);
+                            card.dataset.columnKey = key;
+                            registerCardDragEvents(card, key);
+                            list.appendChild(card);
+                        });
+                        if (btn) btn.style.display = total > showN ? "block" : "none";
+                    });
+                };
+
+                const attachMoreHandlers = () => {
+                    document.querySelectorAll(".btnMore").forEach(btn => {
+                        btn.addEventListener("click", () => {
+                            const col = btn.getAttribute("data-col");
+                            visibleCount[col] += PAGE;
+                            renderColumns();
+                        });
+                    });
+                };
+
+                // Foca um ticket no kanban, expandindo a paginação se necessário
+                const focusTicketById = (id) => {
+                    const normId = String(id);
+                    const colsOrder = ["novos", "atendimento", "parados", "vencidos"];
+
+                    let found = null;
+                    for (const key of colsOrder) {
+                        const idx = colData[key].findIndex(t => String(t.id) === normId);
+                        if (idx !== -1) { found = { key, idx }; break; }
                     }
-                    const aFlag = matchesKeywordAlert(a);
-                    const bFlag = matchesKeywordAlert(b);
-                    if (aFlag !== bFlag) return aFlag ? -1 : 1;
-                    return 0;
-                });
-                ordered.slice(0,showN).forEach(t=>{
-                    const card = buildTicketCard(t);
-                    card.dataset.ticketId = String(t.id);
-                    card.dataset.columnKey = key;
-                    registerCardDragEvents(card, key);
-                    list.appendChild(card);
-                });
-                if (btn) btn.style.display = total > showN ? "block" : "none";
-            });
-        };
 
-        const attachMoreHandlers = () => {
-            document.querySelectorAll(".btnMore").forEach(btn=>{
-                btn.addEventListener("click",()=>{
-                    const col=btn.getAttribute("data-col");
-                    visibleCount[col]+=PAGE;
-                    renderColumns();
-                });
-            });
-        };
+                    const ensureHighlight = () => {
+                        const el = document.querySelector(`[data-ticket-id="${normId}"]`);
+                        if (el) {
+                            el.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+                            el.classList.add("alert");
+                            el.style.transition = "box-shadow .2s ease";
+                            el.style.boxShadow = "0 0 0 4px rgba(239,68,68,.25)";
+                            setTimeout(() => { el.style.boxShadow = ""; }, 400);
+                        }
+                    };
 
-        // Foca um ticket no kanban, expandindo a paginação se necessário
-        const focusTicketById = (id) => {
-            const normId = String(id);
-            const colsOrder = ["novos","atendimento","parados","vencidos"];
+                    if (!found) { ensureHighlight(); return; }
 
-            let found = null;
-            for (const key of colsOrder){
-                const idx = colData[key].findIndex(t => String(t.id) === normId);
-                if (idx !== -1){ found = { key, idx }; break; }
-            }
+                    const { key, idx } = found;
+                    if (visibleCount[key] < idx + 1) {
+                        visibleCount[key] = idx + 1; // expande até o card
+                        renderColumns();
+                    }
+                    requestAnimationFrame(ensureHighlight);
+                };
 
-            const ensureHighlight = () => {
-                const el = document.querySelector(`[data-ticket-id="${normId}"]`);
-                if (el){
-                    el.scrollIntoView({ behavior:"smooth", block:"center", inline:"center" });
-                    el.classList.add("alert");
-                    el.style.transition = "box-shadow .2s ease";
-                    el.style.boxShadow  = "0 0 0 4px rgba(239,68,68,.25)";
-                    setTimeout(()=>{ el.style.boxShadow=""; }, 400);
-                }
-            };
-
-            if (!found){ ensureHighlight(); return; }
-
-            const { key, idx } = found;
-            if (visibleCount[key] < idx + 1){
-                visibleCount[key] = idx + 1; // expande até o card
-                renderColumns();
-            }
-            requestAnimationFrame(ensureHighlight);
-        };
-
-        /* ---------- Carga principal ---------- */
-        const carregarDashboard = async () => {
-            let dados;
-            try {
-                const [ticketsResp, colorsResp, orderResp] = await Promise.all([
-                    fetch("/api/tickets"),
-                    fetch("/api/card-colors"),
-                    fetch("/api/ticket-order"),
-                ]);
-
-                if (ticketsResp.status === 401) { window.location.href = "/login"; return; }
-                if (!ticketsResp.ok) throw new Error(`Falha ao buscar tickets: ${ticketsResp.status}`);
-
-                dados = await ticketsResp.json();
-
-                if (colorsResp.ok) {
+                /* ---------- Carga principal ---------- */
+                const carregarDashboard = async () => {
+                    let dados;
                     try {
-                        const raw = await colorsResp.json();
-                        if (raw && typeof raw === "object" && !Array.isArray(raw)) {
-                            userCardColors = Object.fromEntries(
-                                Object.entries(raw)
-                                    .map(([ticketId, value]) => {
-                                        const normalized = normalizeHex(value);
-                                        return normalized ? [toTicketKey(ticketId), normalized] : null;
-                                    })
-                                    .filter(Boolean)
-                            );
-                        } else {
+                        const [ticketsResp, colorsResp, orderResp] = await Promise.all([
+                            fetch("/api/tickets"),
+                            fetch("/api/card-colors"),
+                            fetch("/api/ticket-order"),
+                        ]);
+
+                        if (ticketsResp.status === 401) { window.location.href = "/login"; return; }
+                        if (!ticketsResp.ok) throw new Error(`Falha ao buscar tickets: ${ticketsResp.status}`);
+
+                        dados = await ticketsResp.json();
+
+                        if (colorsResp.ok) {
+                            try {
+                                const raw = await colorsResp.json();
+                                if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+                                    userCardColors = Object.fromEntries(
+                                        Object.entries(raw)
+                                            .map(([ticketId, value]) => {
+                                                const normalized = normalizeHex(value);
+                                                return normalized ? [toTicketKey(ticketId), normalized] : null;
+                                            })
+                                            .filter(Boolean)
+                                    );
+                                } else {
+                                    userCardColors = {};
+                                }
+                            } catch (err) {
+                                userCardColors = {};
+                            }
+                        } else if (colorsResp.status === 401) {
                             userCardColors = {};
                         }
-                    } catch (err) {
-                        userCardColors = {};
-                    }
-                } else if (colorsResp.status === 401) {
-                    userCardColors = {};
-                }
 
-                if (orderResp.ok) {
-                    try {
-                        const payload = await orderResp.json();
-                        if (payload && typeof payload === "object" && !Array.isArray(payload)) {
-                            userTicketOrder = {};
-                            Object.entries(payload).forEach(([columnKey, arr]) => {
-                                if (!ORDER_COLUMNS.includes(columnKey)) return;
-                                if (!Array.isArray(arr)) return;
-                                userTicketOrder[columnKey] = arr.map((id) => String(id));
-                            });
-                        } else {
+                        if (orderResp.ok) {
+                            try {
+                                const payload = await orderResp.json();
+                                if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+                                    userTicketOrder = {};
+                                    Object.entries(payload).forEach(([columnKey, arr]) => {
+                                        if (!ORDER_COLUMNS.includes(columnKey)) return;
+                                        if (!Array.isArray(arr)) return;
+                                        userTicketOrder[columnKey] = arr.map((id) => String(id));
+                                    });
+                                } else {
+                                    userTicketOrder = {};
+                                }
+                            } catch (err) {
+                                userTicketOrder = {};
+                            }
+                        } else if (orderResp.status === 401) {
                             userTicketOrder = {};
                         }
-                    } catch (err) {
-                        userTicketOrder = {};
+                    } catch (e) {
+                        console.error("Erro ao buscar /api/tickets:", e);
+                        const { msg } = ensureDonutHolders(); if (msg) msg.textContent = "Erro ao buscar dados."; renderLegend({});
+                        const ag = ensureDonutHoldersAgents(); if (ag.msg) ag.msg.textContent = "Erro ao buscar dados."; renderLegendAgents({});
+                        return;
                     }
-                } else if (orderResp.status === 401) {
-                    userTicketOrder = {};
-                }
-            } catch(e){
-                console.error("Erro ao buscar /api/tickets:", e);
-                const { msg } = ensureDonutHolders(); if (msg) msg.textContent="Erro ao buscar dados."; renderLegend({});
-                const ag = ensureDonutHoldersAgents(); if (ag.msg) ag.msg.textContent="Erro ao buscar dados."; renderLegendAgents({});
-                return;
-            }
 
-            // Total do mês (vem do backend)
-            document.getElementById("totalTickets").innerText = dados.counts?.CreatedThisMonth ?? dados.counts?.MonthOpenedAll ?? 0;
+                    // Total do mês (vem do backend)
+                    document.getElementById("totalTickets").innerText = dados.counts?.CreatedThisMonth ?? dados.counts?.MonthOpenedAll ?? 0;
 
-            // Reforço: se modo individual estiver ativo, refiltra por owner e recalcula métricas
-            try{
-                const view = localStorage.getItem('kanban.view') || 'geral';
-                const owner = localStorage.getItem('kanban.owner') || '';
-                if (view === 'individual' && owner){
-                    const norm = (s)=> (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
-                    const filtered = (dados.tickets||[]).filter(t => norm(t.owner||'') === norm(owner));
-                    const hoje = new Date(); const mesAtual = hoje.getMonth(); const anoAtual = hoje.getFullYear();
-                    const ticketsMes = filtered.filter(t=>{ if(!t.createdDate) return false; const d=new Date(t.createdDate); return d.getMonth()===mesAtual && d.getFullYear()===anoAtual; }).length;
-                    const countsPerUrgency = {}; const countsPerOwner = {};
-                    filtered.forEach(t=>{ const u=t.urgency||'N\u00e3o definida'; countsPerUrgency[u]=(countsPerUrgency[u]||0)+1; countsPerOwner[t.owner]=(countsPerOwner[t.owner]||0)+1; });
-                    dados.tickets = filtered;
-                    if (!dados.counts) dados.counts = {};
-                    dados.counts.MonthOpenedAll = ticketsMes;
-                    dados.counts.CreatedThisMonth = ticketsMes;
-                    dados.countsPerUrgency = countsPerUrgency;
-                    dados.countsPerOwner = countsPerOwner;
-                    document.getElementById("totalTickets").innerText = ticketsMes;
-                }
-            }catch{}
+                    // Reforço: se modo individual estiver ativo, refiltra por owner e recalcula métricas
+                    try {
+                        const view = localStorage.getItem('kanban.view') || 'geral';
+                        const owner = localStorage.getItem('kanban.owner') || '';
+                        if (view === 'individual' && owner) {
+                            const norm = (s) => (s || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+                            const filtered = (dados.tickets || []).filter(t => norm(t.owner || '') === norm(owner));
+                            const hoje = new Date(); const mesAtual = hoje.getMonth(); const anoAtual = hoje.getFullYear();
+                            const ticketsMes = filtered.filter(t => { if (!t.createdDate) return false; const d = new Date(t.createdDate); return d.getMonth() === mesAtual && d.getFullYear() === anoAtual; }).length;
+                            const countsPerUrgency = {}; const countsPerOwner = {};
+                            filtered.forEach(t => { const u = t.urgency || 'N\u00e3o definida'; countsPerUrgency[u] = (countsPerUrgency[u] || 0) + 1; countsPerOwner[t.owner] = (countsPerOwner[t.owner] || 0) + 1; });
+                            dados.tickets = filtered;
+                            if (!dados.counts) dados.counts = {};
+                            dados.counts.MonthOpenedAll = ticketsMes;
+                            dados.counts.CreatedThisMonth = ticketsMes;
+                            dados.countsPerUrgency = countsPerUrgency;
+                            dados.countsPerOwner = countsPerOwner;
+                            document.getElementById("totalTickets").innerText = ticketsMes;
+                        }
+                    } catch { }
 
-            // Reset colunas/paginadores
-            colData.novos = []; colData.atendimento = []; colData.parados = []; colData.vencidos = [];
-            visibleCount.novos = visibleCount.atendimento = visibleCount.parados = visibleCount.vencidos = PAGE;
+                    // Reset colunas/paginadores
+                    colData.novos = []; colData.atendimento = []; colData.parados = []; colData.vencidos = [];
+                    visibleCount.novos = visibleCount.atendimento = visibleCount.parados = visibleCount.vencidos = PAGE;
 
-            // Ativos = base New|InAttendance|Stopped OU status detalhado “Aguardando - Fornecedor”; exclui fechados/resolvidos/cancelados
-            const ativos = (dados.tickets||[]).filter(t=>{
-                if (isCanceled(t)) return false;
-                if (t.baseStatus==="Closed" || t.baseStatus==="Resolved") return false;
-                return ACTIVE_BASE.has(t.baseStatus) || isAguardFornecedor(t);
-            });
+                    // Ativos = base New|InAttendance|Stopped OU status detalhado “Aguardando - Fornecedor”; exclui fechados/resolvidos/cancelados
+                    const ativos = (dados.tickets || []).filter(t => {
+                        if (isCanceled(t)) return false;
+                        if (t.baseStatus === "Closed" || t.baseStatus === "Resolved") return false;
+                        return ACTIVE_BASE.has(t.baseStatus) || isAguardFornecedor(t);
+                    });
 
-            // Preenche colunas — tickets NOVOS que batem alerta vão para o TOPO de "Novos" (mesmo se overdue)
-            const toAlert = [];
-            ativos.forEach(t=>{
-                const isNew = t.baseStatus === "New";
-                const hit   = isNew && matchesKeywordAlert(t);
+                    // Preenche colunas — tickets NOVOS que batem alerta vão para o TOPO de "Novos" (mesmo se overdue)
+                    const toAlert = [];
+                    ativos.forEach(t => {
+                        const isNew = t.baseStatus === "New";
+                        const hit = isNew && matchesKeywordAlert(t);
 
-                if (hit && !alertedIds.has(t.id)){
-                    toAlert.push({id:t.id, subject:t.subject||"(sem assunto)"});
-                }
+                        if (hit && !alertedIds.has(t.id)) {
+                            toAlert.push({ id: t.id, subject: t.subject || "(sem assunto)" });
+                        }
 
-                if (isNew && hit){
-                    colData.novos.unshift(t); // 🔝 topo
-                    return;                   // evita duplicar em outras colunas
-                }
+                        if (isNew && hit) {
+                            colData.novos.unshift(t); // 🔝 topo
+                            return;                   // evita duplicar em outras colunas
+                        }
 
-                if (t.overdue) colData.vencidos.push(t);
-                else if (isNew) colData.novos.push(t);
-                else if (t.baseStatus==="InAttendance") colData.atendimento.push(t);
-                else if (t.baseStatus==="Stopped" || isAguardFornecedor(t)) colData.parados.push(t);
-            });
+                        if (t.overdue) colData.vencidos.push(t);
+                        else if (isNew) colData.novos.push(t);
+                        else if (t.baseStatus === "InAttendance") colData.atendimento.push(t);
+                        else if (t.baseStatus === "Stopped" || isAguardFornecedor(t)) colData.parados.push(t);
+                    });
 
-            ORDER_COLUMNS.forEach((columnKey) => {
-                const present = new Set(colData[columnKey].map((item) => String(item.id)));
-                if (!userTicketOrder[columnKey]) return;
-                userTicketOrder[columnKey] = userTicketOrder[columnKey].filter((id) => present.has(String(id)));
-            });
+                    ORDER_COLUMNS.forEach((columnKey) => {
+                        const present = new Set(colData[columnKey].map((item) => String(item.id)));
+                        if (!userTicketOrder[columnKey]) return;
+                        userTicketOrder[columnKey] = userTicketOrder[columnKey].filter((id) => present.has(String(id)));
+                    });
 
-            // Widgets calculados a partir das colunas/ativos
-            document.getElementById("novos").innerText          = colData.novos.length;
-            document.getElementById("emAtendimento").innerText  = colData.atendimento.length;
-            document.getElementById("parados").innerText        = colData.parados.length; // inclui “Aguardando - Fornecedor”
-            document.getElementById("abertos").innerText        = colData.novos.length + colData.atendimento.length + colData.parados.length;
-            document.getElementById("criticos").innerText       = ativos.filter(t=>t.urgency==="Crítica").length;
+                    // Widgets calculados a partir das colunas/ativos
+                    document.getElementById("novos").innerText = colData.novos.length;
+                    document.getElementById("emAtendimento").innerText = colData.atendimento.length;
+                    document.getElementById("parados").innerText = colData.parados.length; // inclui “Aguardando - Fornecedor”
+                    document.getElementById("abertos").innerText = colData.novos.length + colData.atendimento.length + colData.parados.length;
+                    document.getElementById("criticos").innerText = ativos.filter(t => t.urgency === "Crítica").length;
 
-            renderColumns();
+                    renderColumns();
 
-            // Notificações + modal para alertas
-            if (toAlert.length){
-                toAlert.forEach(it=>{ alertedIds.add(it.id); pushNotif(it); });
-                openInativacaoModal(toAlert);
-            }
+                    // Notificações + modal para alertas
+                    if (toAlert.length) {
+                        toAlert.forEach(it => { alertedIds.add(it.id); pushNotif(it); });
+                        openInativacaoModal(toAlert);
+                    }
 
-            // Donut prioridade (fallback se precisar)
-            let prioridades = dados.countsPerUrgency;
-            if (!prioridades || !Object.keys(prioridades).length){
-                const calc={}; ativos.forEach(t=>{ const u=t.urgency||"Não definida"; calc[u]=(calc[u]||0)+1; });
-                prioridades = calc;
-            }
-            renderDonut(prioridades);
+                    // Donut prioridade (fallback se precisar)
+                    let prioridades = dados.countsPerUrgency;
+                    if (!prioridades || !Object.keys(prioridades).length) {
+                        const calc = {}; ativos.forEach(t => { const u = t.urgency || "Não definida"; calc[u] = (calc[u] || 0) + 1; });
+                        prioridades = calc;
+                    }
+                    renderDonut(prioridades);
 
-            // IDs por agente (ativos)
-            agentIdsMap = {};
-            ativos.forEach(t => { const name=t.owner||"Não atribuído"; (agentIdsMap[name] ||= []).push(t.id); });
+                    // IDs por agente (ativos)
+                    agentIdsMap = {};
+                    ativos.forEach(t => { const name = t.owner || "Não atribuído"; (agentIdsMap[name] ||= []).push(t.id); });
 
-            // Donut agentes (usa mapa acima)
-            let porAgente = dados.countsPerOwner;
-            if (!porAgente || !Object.keys(porAgente).length){
-                porAgente = {}; Object.keys(agentIdsMap).forEach(n => porAgente[n] = agentIdsMap[n].length);
-            }
-            renderDonutAgents(porAgente);
+                    // Donut agentes (usa mapa acima)
+                    let porAgente = dados.countsPerOwner;
+                    if (!porAgente || !Object.keys(porAgente).length) {
+                        porAgente = {}; Object.keys(agentIdsMap).forEach(n => porAgente[n] = agentIdsMap[n].length);
+                    }
+                    renderDonutAgents(porAgente);
 
-            // Atualiza seletor do Kanban Individual com os mesmos agentes "ativos"
-            try { if (window.__updateOwnerOptionsFromTickets) window.__updateOwnerOptionsFromTickets(ativos); } catch {}
-        };
+                    // Atualiza seletor do Kanban Individual com os mesmos agentes "ativos"
+                    try { if (window.__updateOwnerOptionsFromTickets) window.__updateOwnerOptionsFromTickets(ativos); } catch { }
+                };
 
-        // Tema claro/escuro
-        document.getElementById("toggleTheme").addEventListener("click",()=>{
-            document.body.classList.toggle("dark");
-            document.getElementById("toggleTheme").textContent =
-                document.body.classList.contains("dark") ? "☀️" : "🌙";
-        });
+                // Tema claro/escuro
+                document.getElementById("toggleTheme").addEventListener("click", () => {
+                    document.body.classList.toggle("dark");
+                    document.getElementById("toggleTheme").textContent =
+                        document.body.classList.contains("dark") ? "☀️" : "🌙";
+                });
 
-        attachMoreHandlers();
-        carregarDashboard();
-    setInterval(carregarDashboard, 180000);
-        // 🔹 Mostrar botão Admin se role=admin
-        fetch("/api/me")
-            .then(r => r.json())
-            .then(user => {
-                if (user.role === "admin") {
-                    document.getElementById("adminBtn").style.display = "flex";
-                    // Adiciona botão Relatórios ao lado do Admin
-                    if (!document.getElementById("relatoriosBtn")) {
+                attachMoreHandlers();
+                carregarDashboard();
+                setInterval(carregarDashboard, 180000);
+                // 🔹 Mostrar botão Admin se role=admin
+                fetch("/api/me")
+                    .then(r => r.json())
+                    .then(user => {
+                        if (user.role === "admin") {
+                            document.getElementById("adminBtn").style.display = "flex";
+                            // Adiciona botão Relatórios ao lado do Admin
+                            if (!document.getElementById("relatoriosBtn")) {
+                                const container = document.querySelector(".acoes");
+                                const adminBtn = document.getElementById("adminBtn");
+                                const link = document.createElement("a");
+                                link.href = "/relatorios.html";
+                                link.id = "relatoriosBtn";
+                                link.className = "btnGhost sm";
+                                link.textContent = "📊 Relatórios";
+                                container.insertBefore(link, adminBtn.nextSibling);
+                            }
+                        }
+                    })
+                    .catch(err => console.error("Erro ao verificar role:", err));
+            })();
+            // 🔹 Verifica se usuário é admin e exibe botão no header
+            const checarAdmin = async () => {
+                try {
+                    const resp = await fetch("/api/me");
+                    if (!resp.ok) return;
+                    const user = await resp.json();
+                    if (user.role === "admin") {
                         const container = document.querySelector(".acoes");
-                        const adminBtn = document.getElementById("adminBtn");
-                        const link = document.createElement("a");
-                        link.href = "/relatorios.html";
-                        link.id = "relatoriosBtn";
-                        link.className = "btnGhost sm";
-                        link.textContent = "📊 Relatórios";
-                        container.insertBefore(link, adminBtn.nextSibling);
+                        let adminBtn = document.getElementById("adminBtn");
+                        if (!adminBtn) {
+                            adminBtn = document.createElement("a");
+                            adminBtn.href = "/admin.html";
+                            adminBtn.id = "adminBtn";
+                            adminBtn.className = "btnGhost sm";
+                            adminBtn.textContent = "⚙️ Admin";
+                            container.insertBefore(adminBtn, document.getElementById("logoutBtn"));
+                        }
+                        // Adiciona botão Relatórios ao lado do Admin
+                        if (!document.getElementById("relatoriosBtn")) {
+                            const relBtn = document.createElement("a");
+                            relBtn.href = "/relatorios.html";
+                            relBtn.id = "relatoriosBtn";
+                            relBtn.className = "btnGhost sm";
+                            relBtn.textContent = "📊 Relatórios";
+                            container.insertBefore(relBtn, adminBtn.nextSibling);
+                        }
                     }
+                } catch (err) {
+                    console.error("Erro ao checar admin:", err);
                 }
-            })
-            .catch(err => console.error("Erro ao verificar role:", err));
-    })();
-    // 🔹 Verifica se usuário é admin e exibe botão no header
-    const checarAdmin = async () => {
-        try {
-            const resp = await fetch("/api/me");
-            if (!resp.ok) return;
-            const user = await resp.json();
-            if (user.role === "admin") {
-                const container = document.querySelector(".acoes");
-                let adminBtn = document.getElementById("adminBtn");
-                if (!adminBtn) {
-                    adminBtn = document.createElement("a");
-                    adminBtn.href = "/admin.html";
-                    adminBtn.id = "adminBtn";
-                    adminBtn.className = "btnGhost sm";
-                    adminBtn.textContent = "⚙️ Admin";
-                    container.insertBefore(adminBtn, document.getElementById("logoutBtn"));
+            };
+
+            checarAdmin();
+
+        </script>
+        <script>
+            // Icon/label wrapping so only the icon shows when collapsed
+            (function () {
+                const actions = document.querySelector('.acoes');
+                if (!actions) return;
+
+                function iconize(el) {
+                    if (!el || el.dataset.iconized) return;
+                    const countNode = el.querySelector ? el.querySelector('#notifCount') : null;
+                    let txt = (el.textContent || '').trim();
+                    if (countNode) { txt = txt.replace(/\d+$/, '').trim(); }
+                    if (!txt) return;
+                    const sp = txt.indexOf(' ');
+                    const icon = sp > -1 ? txt.slice(0, sp) : txt;
+                    const label = sp > -1 ? txt.slice(sp + 1) : '';
+                    // rebuild
+                    el.innerHTML = '';
+                    const i = document.createElement('span'); i.className = 'icon'; i.setAttribute('aria-hidden', 'true'); i.textContent = icon; el.appendChild(i);
+                    const L = document.createElement('span'); L.className = 'label'; L.textContent = label; el.appendChild(L);
+                    if (countNode) { el.appendChild(countNode); }
+                    el.dataset.iconized = '1';
                 }
-                // Adiciona botão Relatórios ao lado do Admin
-                if (!document.getElementById("relatoriosBtn")) {
-                    const relBtn = document.createElement("a");
-                    relBtn.href = "/relatorios.html";
-                    relBtn.id = "relatoriosBtn";
-                    relBtn.className = "btnGhost sm";
-                    relBtn.textContent = "📊 Relatórios";
-                    container.insertBefore(relBtn, adminBtn.nextSibling);
+
+                function scan() { actions.querySelectorAll('a.btnGhost.sm,button.btnGhost.sm').forEach(iconize); }
+                scan();
+                const mo = new MutationObserver(() => scan());
+                mo.observe(actions, { childList: true, subtree: true, characterData: true });
+            })();
+        </script>
+        <script>
+            // Kanban Geral vs Individual (com seletor de agente) + interceptação do /api/tickets
+            (function () {
+                const STORAGE_VIEW = 'kanban.view';
+                const STORAGE_OWNER = 'kanban.owner';
+
+                function getView() { return localStorage.getItem(STORAGE_VIEW) || 'geral'; }
+                function setView(v) { localStorage.setItem(STORAGE_VIEW, v); updateUI(); triggerReload(); }
+                function getOwner() { return localStorage.getItem(STORAGE_OWNER) || ''; }
+                function setOwner(v) { localStorage.setItem(STORAGE_OWNER, v); triggerReload(); }
+
+                function triggerReload() {
+                    try { if (typeof carregarDashboard === 'function') carregarDashboard(); } catch { }
                 }
-            }
-        } catch (err) {
-            console.error("Erro ao checar admin:", err);
-        }
-    };
 
-    checarAdmin();
+                function ensureControls() {
+                    const actions = document.querySelector('.acoes'); if (!actions) return;
+                    // Botão Geral
+                    if (!document.getElementById('kanbanGeralBtn')) {
+                        const a = document.createElement('button');
+                        a.id = 'kanbanGeralBtn'; a.className = 'btnGhost sm'; a.title = 'Kanban Geral'; a.textContent = '🧩 Geral';
+                        a.addEventListener('click', () => { localStorage.setItem(STORAGE_VIEW, 'geral'); window.location.href = '/dashboard'; });
+                        actions.insertBefore(a, document.getElementById('logoutBtn'));
+                    }
+                    // Botão Individual
+                    if (!document.getElementById('kanbanIndBtn')) {
+                        const b = document.createElement('button');
+                        b.id = 'kanbanIndBtn'; b.className = 'btnGhost sm'; b.title = 'Kanban Individual'; b.textContent = '👤 Individual';
+                        b.addEventListener('click', () => { localStorage.setItem(STORAGE_VIEW, 'individual'); window.location.href = '/kanban-individual.html'; });
+                        actions.insertBefore(b, document.getElementById('logoutBtn'));
+                    }
+                    // Seletor de agente
+                    if (!document.getElementById('kanbanOwner')) {
+                        const wrap = document.createElement('div');
+                        wrap.id = 'kanbanOwnerWrap';
+                        wrap.style.display = 'none';
+                        const sel = document.createElement('select'); sel.id = 'kanbanOwner'; sel.style.cssText = 'min-width:160px;height:36px;border:1px solid #d1d5db;border-radius:8px;padding:0 8px;';
+                        sel.addEventListener('change', e => setOwner(e.target.value));
+                        const opt0 = document.createElement('option'); opt0.value = ''; opt0.textContent = 'Selecione o agente...'; sel.appendChild(opt0);
+                        wrap.appendChild(sel);
+                        actions.insertBefore(wrap, document.getElementById('logoutBtn'));
+                    }
+                    // re-icone os botões (caso script de ícones já tenha rodado)
+                    try {
+                        const ev = new Event('DOMSubtreeModified'); document.querySelector('.acoes').dispatchEvent(ev);
+                    } catch { }
+                    updateUI();
+                }
 
-</script>
-<script>
-// Icon/label wrapping so only the icon shows when collapsed
-(function(){
-  const actions = document.querySelector('.acoes');
-  if(!actions) return;
+                function updateUI() {
+                    const v = getView();
+                    const g = document.getElementById('kanbanGeralBtn');
+                    const i = document.getElementById('kanbanIndBtn');
+                    const w = document.getElementById('kanbanOwnerWrap');
+                    if (g) { g.style.outline = v === 'geral' ? '2px solid #93c5fd' : 'none'; }
+                    if (i) { i.style.outline = v === 'individual' ? '2px solid #93c5fd' : 'none'; }
+                    if (w) { w.style.display = v === 'individual' ? '' : 'none'; }
+                }
 
-  function iconize(el){
-    if(!el || el.dataset.iconized) return;
-    const countNode = el.querySelector ? el.querySelector('#notifCount') : null;
-    let txt = (el.textContent||'').trim();
-    if(countNode){ txt = txt.replace(/\d+$/, '').trim(); }
-    if(!txt) return;
-    const sp = txt.indexOf(' ');
-    const icon = sp>-1 ? txt.slice(0,sp) : txt;
-    const label = sp>-1 ? txt.slice(sp+1) : '';
-    // rebuild
-    el.innerHTML='';
-    const i = document.createElement('span'); i.className='icon'; i.setAttribute('aria-hidden','true'); i.textContent=icon; el.appendChild(i);
-    const L = document.createElement('span'); L.className='label'; L.textContent = label; el.appendChild(L);
-    if(countNode){ el.appendChild(countNode); }
-    el.dataset.iconized='1';
-  }
+                // Popular seletor de agente com base nos tickets retornados
+                function updateOwnerOptionsFromTickets(tickets) {
+                    const sel = document.getElementById('kanbanOwner'); if (!sel) return;
+                    const current = getOwner();
+                    const owners = Array.from(new Set((tickets || []).map(t => t.owner || 'Não atribuído'))).sort((a, b) => a.localeCompare(b));
+                    const existing = Array.from(sel.options).map(o => o.value);
+                    const changed = owners.length + 1 !== existing.length || owners.some(o => !existing.includes(o));
+                    if (changed) {
+                        sel.innerHTML = '';
+                        const opt0 = document.createElement('option'); opt0.value = ''; opt0.textContent = 'Selecione o agente...'; sel.appendChild(opt0);
+                        owners.forEach(o => { const opt = document.createElement('option'); opt.value = o; opt.textContent = o; sel.appendChild(opt); });
+                    }
+                    if (current && owners.includes(current)) sel.value = current; else sel.value = '';
+                }
 
-  function scan(){ actions.querySelectorAll('a.btnGhost.sm,button.btnGhost.sm').forEach(iconize); }
-  scan();
-  const mo = new MutationObserver(() => scan());
-  mo.observe(actions, { childList:true, subtree:true, characterData:true });
-})();
-</script>
-<script>
-// Kanban Geral vs Individual (com seletor de agente) + interceptação do /api/tickets
-(function(){
-  const STORAGE_VIEW = 'kanban.view';
-  const STORAGE_OWNER = 'kanban.owner';
+                // Expor helper para o wrapper de fetch abaixo
+                window.__updateOwnerOptionsFromTickets = updateOwnerOptionsFromTickets;
 
-  function getView(){ return localStorage.getItem(STORAGE_VIEW) || 'geral'; }
-  function setView(v){ localStorage.setItem(STORAGE_VIEW, v); updateUI(); triggerReload(); }
-  function getOwner(){ return localStorage.getItem(STORAGE_OWNER) || ''; }
-  function setOwner(v){ localStorage.setItem(STORAGE_OWNER, v); triggerReload(); }
+                ensureControls();
 
-  function triggerReload(){
-    try { if (typeof carregarDashboard === 'function') carregarDashboard(); } catch {}
-  }
+                // Intercepta /api/tickets para aplicar filtro por agente quando modo individual estiver ativo
+                const origFetch = window.fetch.bind(window);
+                function recompute(tickets) {
+                    const isInactive = (t) => (t.baseStatus === 'Closed' || t.baseStatus === 'Resolved') || (String(t.status || '').toLowerCase().includes('cancelad')) || t.baseStatus === 'Canceled' || t.baseStatus === 'Cancelled';
+                    const hoje = new Date(); const mesAtual = hoje.getMonth(); const anoAtual = hoje.getFullYear();
+                    const counts = {
+                        Total: tickets.filter(t => !t.canceled).length,
+                        New: tickets.filter(t => t.baseStatus === 'New' && !t.canceled).length,
+                        InAttendance: tickets.filter(t => t.baseStatus === 'InAttendance' && !t.canceled).length,
+                        Stopped: tickets.filter(t => t.baseStatus === 'Stopped' && !t.canceled).length,
+                        Closed: tickets.filter(t => (t.baseStatus === 'Closed' || t.baseStatus === 'Resolved') && !t.canceled).length,
+                        Overdue: tickets.filter(t => t.overdue && !t.canceled).length,
+                        MonthOpenedAll: tickets.filter(t => { if (!t.createdDate) return false; const d = new Date(t.createdDate); return d.getMonth() === mesAtual && d.getFullYear() === anoAtual; }).length
+                    };
+                    counts.OpenTickets = counts.New + counts.InAttendance + counts.Stopped;
+                    const countsPerUrgency = {}; const countsPerOwner = {};
+                    tickets.forEach(t => { if (isInactive(t)) return; countsPerUrgency[t.urgency] = (countsPerUrgency[t.urgency] || 0) + 1; countsPerOwner[t.owner] = (countsPerOwner[t.owner] || 0) + 1; });
+                    return { counts, countsPerUrgency, countsPerOwner, tickets };
+                }
+                window.fetch = async function (input, init) {
+                    const url = (typeof input === 'string') ? input : (input && input.url) || '';
+                    if (url.includes('/api/tickets')) {
+                        // Se modo individual + owner, pede já filtrado ao backend (?owner=...)
+                        if (getView() === 'individual') {
+                            const owner = getOwner();
+                            if (owner) {
+                                const u = new URL(url, location.origin);
+                                u.searchParams.set('owner', owner);
+                                const resp = await origFetch(u.toString(), init);
+                                try {
+                                    const data = await resp.clone().json();
+                                    const norm = (s) => (s || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+                                    const filtered = (data.tickets || []).filter(t => norm(t.owner || '') === norm(owner));
+                                    setTimeout(() => { try { window.__updateOwnerOptionsFromTickets(filtered); } catch { } }, 0);
+                                    // Sempre retorna resposta filtrada no modo individual
+                                    const mod = recompute(filtered);
+                                    return new Response(JSON.stringify(mod), { status: 200, headers: { 'Content-Type': 'application/json' } });
+                                } catch { }
+                                return resp;
+                            }
+                        }
+                        const resp = await origFetch(input, init);
+                        try {
+                            const data = await resp.clone().json();
+                            // atualiza lista de agentes assim que vierem tickets
+                            setTimeout(() => { try { window.__updateOwnerOptionsFromTickets(data.tickets || []); } catch { } }, 0);
+                            // no modo geral mantemos a resposta original
+                            return resp;
+                        } catch { return resp; }
+                    }
+                    return origFetch(input, init);
+                };
+                // Garante recarga imediata no modo individual após instalar o interceptor
+                try {
+                    if (getView() === 'individual' && getOwner() && typeof carregarDashboard === 'function') {
+                        carregarDashboard();
+                    }
+                } catch { }
+            })();
+        </script>
+        <script>
+            (function () {
+                const STORAGE_VIEW = 'kanban.view';
+                const STORAGE_OWNER = 'kanban.owner';
+                if (localStorage.getItem(STORAGE_OWNER)) return;
+                const norm = (s) => (s || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+                async function tryDefault() {
+                    const sel = document.getElementById('kanbanOwner');
+                    if (!sel) return;
+                    try {
+                        const r = await fetch('/api/me'); if (!r.ok) return;
+                        const me = await r.json();
+                        const uname = norm(me.username || ''); if (!uname) return;
+                        const values = Array.from(sel.options).map(o => o.value).filter(Boolean);
+                        const match = values.find(v => norm(v).includes(uname));
+                        if (match) {
+                            sel.value = match;
+                            localStorage.setItem(STORAGE_OWNER, match);
+                            if (localStorage.getItem(STORAGE_VIEW) === 'individual' && typeof carregarDashboard === 'function') { try { carregarDashboard(); } catch { } }
+                        }
+                    } catch { }
+                }
+                function init() {
+                    const sel = document.getElementById('kanbanOwner');
+                    if (!sel) { setTimeout(init, 400); return; }
+                    tryDefault();
+                    new MutationObserver(() => tryDefault()).observe(sel, { childList: true, subtree: true });
+                }
+                init();
+            })();
+        </script>
+        <script>
+            // Override: alinhar lista do Kanban Individual à "Distribuição por Agente (ativos)"
+            (function () {
+                if (typeof updateOwnerOptionsFromTickets !== 'function') return;
+                const ACTIVE_BASE = new Set(["New", "InAttendance", "Stopped"]);
+                const norm = (s) => (s || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+                const isCanceled = (t) => t.baseStatus === "Canceled" || t.baseStatus === "Cancelled" || norm(t.status || '').includes('cancelad');
+                const isAguardFornecedor = (t) => { const s = norm(t.status || ''); return s.includes('aguard') && s.includes('fornecedor'); };
 
-  function ensureControls(){
-    const actions = document.querySelector('.acoes'); if(!actions) return;
-    // Botão Geral
-    if (!document.getElementById('kanbanGeralBtn')){
-      const a = document.createElement('button');
-      a.id='kanbanGeralBtn'; a.className='btnGhost sm'; a.title='Kanban Geral'; a.textContent='🧩 Geral';
-      a.addEventListener('click', ()=> { localStorage.setItem(STORAGE_VIEW,'geral'); window.location.href='/dashboard'; });
-      actions.insertBefore(a, document.getElementById('logoutBtn'));
-    }
-    // Botão Individual
-    if (!document.getElementById('kanbanIndBtn')){
-      const b = document.createElement('button');
-      b.id='kanbanIndBtn'; b.className='btnGhost sm'; b.title='Kanban Individual'; b.textContent='👤 Individual';
-      b.addEventListener('click', ()=> { localStorage.setItem(STORAGE_VIEW,'individual'); window.location.href='/kanban-individual.html'; });
-      actions.insertBefore(b, document.getElementById('logoutBtn'));
-    }
-    // Seletor de agente
-    if (!document.getElementById('kanbanOwner')){
-      const wrap = document.createElement('div');
-      wrap.id = 'kanbanOwnerWrap';
-      wrap.style.display = 'none';
-      const sel = document.createElement('select'); sel.id='kanbanOwner'; sel.style.cssText='min-width:160px;height:36px;border:1px solid #d1d5db;border-radius:8px;padding:0 8px;';
-      sel.addEventListener('change', e=> setOwner(e.target.value));
-      const opt0 = document.createElement('option'); opt0.value=''; opt0.textContent='Selecione o agente...'; sel.appendChild(opt0);
-      wrap.appendChild(sel);
-      actions.insertBefore(wrap, document.getElementById('logoutBtn'));
-    }
-    // re-icone os botões (caso script de ícones já tenha rodado)
-    try{
-      const ev = new Event('DOMSubtreeModified'); document.querySelector('.acoes').dispatchEvent(ev);
-    } catch {}
-    updateUI();
-  }
+                function upd(tickets) {
+                    const sel = document.getElementById('kanbanOwner'); if (!sel) return;
+                    const current = (localStorage.getItem('kanban.owner') || '');
+                    const ativos = (tickets || []).filter(t => {
+                        if (isCanceled(t)) return false;
+                        if (t.baseStatus === 'Closed' || t.baseStatus === 'Resolved') return false;
+                        return ACTIVE_BASE.has(t.baseStatus) || isAguardFornecedor(t);
+                    });
+                    const owners = Array.from(new Set(ativos.map(t => t.owner || 'Nǜo atribu��do'))).sort((a, b) => a.localeCompare(b));
+                    const existing = Array.from(sel.options).map(o => o.value);
+                    const changed = owners.length + 1 !== existing.length || owners.some(o => !existing.includes(o));
+                    if (changed) {
+                        sel.innerHTML = '';
+                        const opt0 = document.createElement('option'); opt0.value = ''; opt0.textContent = 'Selecione o agente...'; sel.appendChild(opt0);
+                        owners.forEach(o => { const opt = document.createElement('option'); opt.value = o; opt.textContent = o; sel.appendChild(opt); });
+                    }
+                    if (current && owners.includes(current)) sel.value = current; else sel.value = '';
+                }
 
-  function updateUI(){
-    const v = getView();
-    const g = document.getElementById('kanbanGeralBtn');
-    const i = document.getElementById('kanbanIndBtn');
-    const w = document.getElementById('kanbanOwnerWrap');
-    if(g){ g.style.outline = v==='geral' ? '2px solid #93c5fd' : 'none'; }
-    if(i){ i.style.outline = v==='individual' ? '2px solid #93c5fd' : 'none'; }
-    if(w){ w.style.display = v==='individual' ? '' : 'none'; }
-  }
+                // Sincroniza view/owner via querystring (?view=individual&owner=...)
+                (function syncFromQuery() {
+                    try {
+                        const q = new URLSearchParams(location.search);
+                        let changed = false;
+                        if (q.has('view')) { localStorage.setItem(STORAGE_VIEW, q.get('view')); changed = true; }
+                        if (q.has('owner')) { localStorage.setItem(STORAGE_OWNER, q.get('owner')); changed = true; }
+                        if (changed) {
+                            // limpa a query para evitar recargas repetidas
+                            const clean = location.origin + location.pathname;
+                            history.replaceState({}, document.title, clean);
+                        }
+                    } catch { }
+                })();
 
-  // Popular seletor de agente com base nos tickets retornados
-  function updateOwnerOptionsFromTickets(tickets){
-    const sel = document.getElementById('kanbanOwner'); if(!sel) return;
-    const current = getOwner();
-    const owners = Array.from(new Set((tickets||[]).map(t => t.owner || 'Não atribuído'))).sort((a,b)=>a.localeCompare(b));
-    const existing = Array.from(sel.options).map(o=>o.value);
-    const changed = owners.length+1 !== existing.length || owners.some(o=>!existing.includes(o));
-    if(changed){
-      sel.innerHTML = '';
-      const opt0 = document.createElement('option'); opt0.value=''; opt0.textContent='Selecione o agente...'; sel.appendChild(opt0);
-      owners.forEach(o=>{ const opt=document.createElement('option'); opt.value=o; opt.textContent=o; sel.appendChild(opt); });
-    }
-    if(current && owners.includes(current)) sel.value = current; else sel.value = '';
-  }
-
-  // Expor helper para o wrapper de fetch abaixo
-  window.__updateOwnerOptionsFromTickets = updateOwnerOptionsFromTickets;
-
-  ensureControls();
-
-  // Intercepta /api/tickets para aplicar filtro por agente quando modo individual estiver ativo
-  const origFetch = window.fetch.bind(window);
-  function recompute(tickets){
-    const isInactive = (t)=> (t.baseStatus==='Closed'||t.baseStatus==='Resolved') || (String(t.status||'').toLowerCase().includes('cancelad')) || t.baseStatus==='Canceled' || t.baseStatus==='Cancelled';
-    const hoje = new Date(); const mesAtual = hoje.getMonth(); const anoAtual = hoje.getFullYear();
-    const counts = {
-      Total: tickets.filter(t=>!t.canceled).length,
-      New: tickets.filter(t=>t.baseStatus==='New' && !t.canceled).length,
-      InAttendance: tickets.filter(t=>t.baseStatus==='InAttendance' && !t.canceled).length,
-      Stopped: tickets.filter(t=>t.baseStatus==='Stopped' && !t.canceled).length,
-      Closed: tickets.filter(t=> (t.baseStatus==='Closed'||t.baseStatus==='Resolved') && !t.canceled).length,
-      Overdue: tickets.filter(t=>t.overdue && !t.canceled).length,
-      MonthOpenedAll: tickets.filter(t=>{ if(!t.createdDate) return false; const d=new Date(t.createdDate); return d.getMonth()===mesAtual && d.getFullYear()===anoAtual; }).length
-    };
-    counts.OpenTickets = counts.New + counts.InAttendance + counts.Stopped;
-    const countsPerUrgency = {}; const countsPerOwner={};
-    tickets.forEach(t=>{ if(isInactive(t)) return; countsPerUrgency[t.urgency] = (countsPerUrgency[t.urgency]||0)+1; countsPerOwner[t.owner] = (countsPerOwner[t.owner]||0)+1; });
-    return { counts, countsPerUrgency, countsPerOwner, tickets };
-  }
-  window.fetch = async function(input, init){
-    const url = (typeof input === 'string') ? input : (input && input.url) || '';
-    if (url.includes('/api/tickets')){
-      // Se modo individual + owner, pede já filtrado ao backend (?owner=...)
-      if (getView()==='individual'){
-        const owner = getOwner();
-        if (owner){
-          const u = new URL(url, location.origin);
-          u.searchParams.set('owner', owner);
-          const resp = await origFetch(u.toString(), init);
-          try{
-            const data = await resp.clone().json();
-            const norm = (s)=> (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
-            const filtered = (data.tickets||[]).filter(t => norm(t.owner||'') === norm(owner));
-            setTimeout(()=>{ try{ window.__updateOwnerOptionsFromTickets(filtered); } catch {} }, 0);
-            // Sempre retorna resposta filtrada no modo individual
-            const mod = recompute(filtered);
-            return new Response(JSON.stringify(mod), { status: 200, headers: { 'Content-Type': 'application/json' } });
-          }catch{}
-          return resp;
-        }
-      }
-      const resp = await origFetch(input, init);
-      try{
-        const data = await resp.clone().json();
-        // atualiza lista de agentes assim que vierem tickets
-        setTimeout(()=>{ try{ window.__updateOwnerOptionsFromTickets(data.tickets||[]); } catch {} }, 0);
-        // no modo geral mantemos a resposta original
-        return resp;
-      } catch { return resp; }
-    }
-    return origFetch(input, init);
-  };
-  // Garante recarga imediata no modo individual após instalar o interceptor
-  try {
-    if (getView() === 'individual' && getOwner() && typeof carregarDashboard === 'function') {
-      carregarDashboard();
-    }
-  } catch {}
-})();
-</script>
-<script>
-(function(){
-  const STORAGE_VIEW='kanban.view';
-  const STORAGE_OWNER='kanban.owner';
-  if(localStorage.getItem(STORAGE_OWNER)) return;
-  const norm=(s)=> (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-  async function tryDefault(){
-    const sel=document.getElementById('kanbanOwner');
-    if(!sel) return;
-    try{
-      const r=await fetch('/api/me'); if(!r.ok) return;
-      const me=await r.json();
-      const uname=norm(me.username||''); if(!uname) return;
-      const values=Array.from(sel.options).map(o=>o.value).filter(Boolean);
-      const match=values.find(v=>norm(v).includes(uname));
-      if(match){
-        sel.value=match;
-        localStorage.setItem(STORAGE_OWNER, match);
-        if(localStorage.getItem(STORAGE_VIEW)==='individual' && typeof carregarDashboard==='function'){ try{carregarDashboard();}catch{} }
-      }
-    }catch{}
-  }
-  function init(){
-    const sel=document.getElementById('kanbanOwner');
-    if(!sel){ setTimeout(init,400); return; }
-    tryDefault();
-    new MutationObserver(()=>tryDefault()).observe(sel,{childList:true,subtree:true});
-  }
-  init();
-})();
-</script>
-<script>
-// Override: alinhar lista do Kanban Individual à "Distribuição por Agente (ativos)"
-(function(){
-  if (typeof updateOwnerOptionsFromTickets !== 'function') return;
-  const ACTIVE_BASE = new Set(["New","InAttendance","Stopped"]);
-  const norm = (s)=> (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-  const isCanceled = (t) => t.baseStatus==="Canceled" || t.baseStatus==="Cancelled" || norm(t.status||'').includes('cancelad');
-  const isAguardFornecedor = (t) => { const s = norm(t.status||''); return s.includes('aguard') && s.includes('fornecedor'); };
-
-  function upd(tickets){
-    const sel = document.getElementById('kanbanOwner'); if(!sel) return;
-    const current = (localStorage.getItem('kanban.owner')||'');
-    const ativos = (tickets||[]).filter(t=>{
-      if (isCanceled(t)) return false;
-      if (t.baseStatus==='Closed' || t.baseStatus==='Resolved') return false;
-      return ACTIVE_BASE.has(t.baseStatus) || isAguardFornecedor(t);
-    });
-    const owners = Array.from(new Set(ativos.map(t=> t.owner || 'Nǜo atribu��do'))).sort((a,b)=>a.localeCompare(b));
-    const existing = Array.from(sel.options).map(o=>o.value);
-    const changed = owners.length+1 !== existing.length || owners.some(o=>!existing.includes(o));
-    if(changed){
-      sel.innerHTML = '';
-      const opt0 = document.createElement('option'); opt0.value=''; opt0.textContent='Selecione o agente...'; sel.appendChild(opt0);
-      owners.forEach(o=>{ const opt=document.createElement('option'); opt.value=o; opt.textContent=o; sel.appendChild(opt); });
-    }
-    if(current && owners.includes(current)) sel.value = current; else sel.value = '';
-  }
-
-  // Sincroniza view/owner via querystring (?view=individual&owner=...)
-  (function syncFromQuery(){
-    try{
-      const q = new URLSearchParams(location.search);
-      let changed = false;
-      if (q.has('view')){ localStorage.setItem(STORAGE_VIEW, q.get('view')); changed = true; }
-      if (q.has('owner')){ localStorage.setItem(STORAGE_OWNER, q.get('owner')); changed = true; }
-      if (changed){
-        // limpa a query para evitar recargas repetidas
-        const clean = location.origin + location.pathname;
-        history.replaceState({}, document.title, clean);
-      }
-    }catch{}
-  })();
-
-  // redefine helper global usado pelo interceptador de fetch
-  window.__updateOwnerOptionsFromTickets = upd;
-})();
-</script>
-<!-- Modal de busca de ticket -->
-<div id="searchModal" class="modalOverlay" aria-hidden="true">
-    <div class="modalBox" role="dialog" aria-modal="true" aria-labelledby="searchModalTitle">
-        <h3 id="searchModalTitle">Resultado da Busca</h3>
-        <div id="searchResult"></div>
-        <div class="modalActions">
-            <a id="openTicketLink" class="btnGhost" href="#" target="_blank" rel="noopener noreferrer" hidden>Abrir ticket</a>
-            <button id="closeSearchModal" class="btnGhost">Fechar</button>
+                // redefine helper global usado pelo interceptador de fetch
+                window.__updateOwnerOptionsFromTickets = upd;
+            })();
+        </script>
+        <!-- Modal de busca de ticket -->
+        <div id="searchModal" class="modalOverlay" aria-hidden="true">
+            <div class="modalBox" role="dialog" aria-modal="true" aria-labelledby="searchModalTitle">
+                <h3 id="searchModalTitle">Resultado da Busca</h3>
+                <div id="searchResult"></div>
+                <div class="modalActions">
+                    <a id="openTicketLink" class="btnGhost" href="#" target="_blank" rel="noopener noreferrer"
+                        hidden>Abrir ticket</a>
+                    <button id="closeSearchModal" class="btnGhost">Fechar</button>
+                </div>
+            </div>
         </div>
-    </div>
-</div>
 
-<script>
-    (async () => {
-        try {
-            const resp = await fetch("/api/me");
-            if (!resp.ok) return;
-            const user = await resp.json();
-            if (user.role === "admin" || user.role === "supervisor") {
-                const container = document.querySelector(".acoes");
-                let reportsBtn = document.getElementById("relatoriosBtn");
-                if (!reportsBtn) {
-                    reportsBtn = document.createElement("a");
-                    reportsBtn.href = "/reports";
-                    reportsBtn.id = "relatoriosBtn";
-                    reportsBtn.className = "btnGhost sm";
-                    reportsBtn.textContent = "📊 Relatórios";
-                    container.insertBefore(reportsBtn, document.getElementById("logoutBtn"));
+        <script>
+            (async () => {
+                try {
+                    const resp = await fetch("/api/me");
+                    if (!resp.ok) return;
+                    const user = await resp.json();
+                    if (user.role === "admin" || user.role === "supervisor") {
+                        const container = document.querySelector(".acoes");
+                        let reportsBtn = document.getElementById("relatoriosBtn");
+                        if (!reportsBtn) {
+                            reportsBtn = document.createElement("a");
+                            reportsBtn.href = "/reports";
+                            reportsBtn.id = "relatoriosBtn";
+                            reportsBtn.className = "btnGhost sm";
+                            reportsBtn.textContent = "📊 Relatórios";
+                            container.insertBefore(reportsBtn, document.getElementById("logoutBtn"));
+                        }
+                    }
+                } catch (err) {
+                    console.error("Erro ao checar permissões:", err);
                 }
-            }
-        } catch (err) {
-            console.error("Erro ao checar permissões:", err);
-        }
-    })();
+            })();
 
 
-const searchBtn = document.getElementById("searchBtn");
-const closeSearchModal = document.getElementById("closeSearchModal");
-const searchModal = document.getElementById("searchModal");
-const searchResult = document.getElementById("searchResult");
-const openTicketLink = document.getElementById("openTicketLink");
-const ticketInput = document.getElementById("ticketId");
+            const searchBtn = document.getElementById("searchBtn");
+            const closeSearchModal = document.getElementById("closeSearchModal");
+            const searchModal = document.getElementById("searchModal");
+            const searchResult = document.getElementById("searchResult");
+            const openTicketLink = document.getElementById("openTicketLink");
+            const ticketInput = document.getElementById("ticketId");
 
-const setSearchModalVisibility = (visible) => {
-    if (visible) {
-        searchModal.classList.add("show");
-        searchModal.setAttribute("aria-hidden", "false");
-    } else {
-        searchModal.classList.remove("show");
-        searchModal.setAttribute("aria-hidden", "true");
-    }
-};
+            const setSearchModalVisibility = (visible) => {
+                if (visible) {
+                    searchModal.classList.add("show");
+                    searchModal.setAttribute("aria-hidden", "false");
+                } else {
+                    searchModal.classList.remove("show");
+                    searchModal.setAttribute("aria-hidden", "true");
+                }
+            };
 
-const startSearchLoading = () => {
-    searchBtn.disabled = true;
-    searchBtn.classList.add("loading");
-    searchResult.innerHTML = `
+            const startSearchLoading = () => {
+                searchBtn.disabled = true;
+                searchBtn.classList.add("loading");
+                searchResult.innerHTML = `
         <div class="search-loading">
             <span class="loadingSpinner" aria-hidden="true"></span>
             <span>Buscando ticket...</span>
         </div>
     `;
-    openTicketLink.hidden = true;
-    openTicketLink.href = "#";
-    setSearchModalVisibility(true);
-};
+                openTicketLink.hidden = true;
+                openTicketLink.href = "#";
+                setSearchModalVisibility(true);
+            };
 
-const finishSearchLoading = () => {
-    searchBtn.disabled = false;
-    searchBtn.classList.remove("loading");
-};
+            const finishSearchLoading = () => {
+                searchBtn.disabled = false;
+                searchBtn.classList.remove("loading");
+            };
 
-searchBtn.addEventListener("click", async () => {
-    const ticketId = (ticketInput?.value || "").trim();
-    if (!ticketId) {
-        alert("Por favor, insira um ID de ticket.");
-        return;
-    }
+            searchBtn.addEventListener("click", async () => {
+                const ticketId = (ticketInput?.value || "").trim();
+                if (!ticketId) {
+                    alert("Por favor, insira um ID de ticket.");
+                    return;
+                }
 
-    startSearchLoading();
+                startSearchLoading();
 
-    try {
-        const response = await fetch(`/api/ticket/${ticketId}`);
-        if (response.ok) {
-            const ticket = await response.json();
-            searchResult.innerHTML = `
+                try {
+                    const response = await fetch(`/api/ticket/${ticketId}`);
+                    if (response.ok) {
+                        const ticket = await response.json();
+                        searchResult.innerHTML = `
                 <h4>#${ticket.id} - ${ticket.subject}</h4>
                 <p><b>Status:</b> ${ticket.status}</p>
                 <p><b>Solicitante:</b> ${ticket.requester}</p>
@@ -1607,40 +1632,41 @@ searchBtn.addEventListener("click", async () => {
                     `).join('')}
                 </div>
             `;
-            openTicketLink.href = `https://atendimento.viasoft.com.br/Ticket/Edit/${ticket.id}`;
-            openTicketLink.hidden = false;
-        } else {
-            searchResult.innerHTML = '<p class="search-feedback error">Ticket não encontrado.</p>';
-        }
-    } catch (error) {
-        console.error("Erro ao buscar ticket:", error);
-        searchResult.innerHTML = '<p class="search-feedback error">Erro ao buscar ticket.</p>';
-    } finally {
-        finishSearchLoading();
-    }
-});
+                        openTicketLink.href = `https://atendimento.viasoft.com.br/Ticket/Edit/${ticket.id}`;
+                        openTicketLink.hidden = false;
+                    } else {
+                        searchResult.innerHTML = '<p class="search-feedback error">Ticket não encontrado.</p>';
+                    }
+                } catch (error) {
+                    console.error("Erro ao buscar ticket:", error);
+                    searchResult.innerHTML = '<p class="search-feedback error">Erro ao buscar ticket.</p>';
+                } finally {
+                    finishSearchLoading();
+                }
+            });
 
-closeSearchModal.addEventListener("click", () => {
-    setSearchModalVisibility(false);
-    openTicketLink.hidden = true;
-    openTicketLink.href = "#";
-    searchResult.innerHTML = "";
-    if (ticketInput) {
-        ticketInput.focus();
-    }
-});
-if (ticketInput) {
-    ticketInput.addEventListener("keydown", (event) => {
-        if (event.key === "Enter") {
-            event.preventDefault();
-            searchBtn.click();
-        }
-    });
-}
+            closeSearchModal.addEventListener("click", () => {
+                setSearchModalVisibility(false);
+                openTicketLink.hidden = true;
+                openTicketLink.href = "#";
+                searchResult.innerHTML = "";
+                if (ticketInput) {
+                    ticketInput.focus();
+                }
+            });
+            if (ticketInput) {
+                ticketInput.addEventListener("keydown", (event) => {
+                    if (event.key === "Enter") {
+                        event.preventDefault();
+                        searchBtn.click();
+                    }
+                });
+            }
 
-</script>
-</body>
+        </script>
+    </body>
+
 </html>
 </body>
-</html>
 
+</html>
