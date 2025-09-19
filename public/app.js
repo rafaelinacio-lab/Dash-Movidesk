@@ -397,38 +397,60 @@
 
     const buildTicketCard = (t) => {
         const statusSlug = slug(t.status || "nao definido");
-        const urgSlug  = slug(t.urgency || "Não definida");
+        const urgSlug = slug(t.urgency || "Não definida");
 
-        let prevSolTxt = "-", prevClass = "gray";
-        if (t.previsaoSolucao){
-            const due = new Date(t.previsaoSolucao+"T23:59:59");
+        let prevSolTxt = "-";
+        let prevClass = "gray";
+        if (t.previsaoSolucao) {
+            const due = new Date(t.previsaoSolucao + "T23:59:59");
             prevSolTxt = due.toLocaleDateString();
             if (t.dueCategory === "overdue" || t.overdue) prevClass = "red";
-            else if (t.dueCategory === "warning")         prevClass = "orange";
-            else if (t.dueCategory === "ok")              prevClass = "green";
-            else                                          prevClass = "gray";
+            else if (t.dueCategory === "warning") prevClass = "orange";
+            else if (t.dueCategory === "ok") prevClass = "green";
+            else prevClass = "gray";
         }
 
         const card = document.createElement("div");
-        card.className = "ticket ticket-can-edit-color";
-        if (t.overdue) card.style.outline = "2px solid rgba(220,38,38,.45)";
+        card.classList.add("ticket", "ticket-can-edit-color", "ticket-collapsible", "collapsed");
 
-        if (isInativacaoMovidesk(t)) {
-            card.classList.add("ticket-flagged");
-        }
+        const header = document.createElement("div");
+        header.className = "ticketHeader";
+        header.innerHTML = `<h4>#${t.id} - ${t.subject}</h4>`;
+        header.setAttribute("role", "button");
+        header.setAttribute("tabindex", "0");
+        header.setAttribute("aria-expanded", "false");
 
-        card.innerHTML = `
-      <h4>#${t.id} - ${t.subject}</h4>
-      <p><b>Urgência:</b> <span class="pill urg-${urgSlug}">${t.urgency || "Não definida"}</span></p>
-      <p><b>Status detalhado:</b>
-        <span class="statusDetalhado status-${statusSlug}">${t.status || "Não definido"}</span>
-      </p>
-      <p><b>Prev. solução:</b> <span class="badgePrev ${prevClass}">${prevSolTxt}</span></p>
-      <div class="responsavelBox">
-        <span class="badge responsavel">${t.owner}</span>
-      </div>
-      <small>Criado em ${t.createdDate ? new Date(t.createdDate).toLocaleDateString() : "-"}</small>
-    `;
+        const body = document.createElement("div");
+        body.className = "ticketBody";
+        body.innerHTML = `
+            <p><b>Urgência:</b> <span class="pill urg-${urgSlug}">${t.urgency || "Não definida"}</span></p>
+            <p><b>Status detalhado:</b> <span class="statusDetalhado status-${statusSlug}">${t.status || "Não definido"}</span></p>
+            <p><b>Prev. solução:</b> <span class="badgePrev ${prevClass}">${prevSolTxt}</span></p>
+            <div class="responsavelBox">
+                <span class="badge responsavel">${t.owner}</span>
+            </div>
+            <small>Criado em ${t.createdDate ? new Date(t.createdDate).toLocaleDateString() : "-"}</small>
+        `;
+
+        card.append(header, body);
+
+        const toggleCard = () => {
+            const collapsed = card.classList.toggle("collapsed");
+            header.setAttribute("aria-expanded", String(!collapsed));
+        };
+
+        header.addEventListener("click", (event) => {
+            event.stopPropagation();
+            if (card.classList.contains("dragging")) return;
+            toggleCard();
+        });
+
+        header.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                toggleCard();
+            }
+        });
 
         const currentColor = getCardColor(t.id);
         applyCardColor(card, currentColor);
@@ -458,6 +480,206 @@
                 colorInput.click();
             }
         };
+
+        colorInput.addEventListener("input", (event) => {
+            const preview = normalizeHex(event.target.value);
+            if (!preview) return;
+            applyCardColor(card, preview);
+            colorBtn.style.setProperty("--ticket-btn-color", preview);
+        });
+
+        colorInput.addEventListener("change", async (event) => {
+            const chosen = normalizeHex(event.target.value);
+            const previous = getCardColor(t.id);
+            if (!chosen) {
+                event.target.value = previous || DEFAULT_CARD_COLOR;
+                return;
+            }
+            if (chosen === previous) {
+                applyCardColor(card, chosen);
+                colorBtn.style.setProperty("--ticket-btn-color", chosen);
+                return;
+            }
+
+            applyCardColor(card, chosen);
+            colorBtn.style.setProperty("--ticket-btn-color", chosen);
+
+            try {
+                const result = await persistCardColor(t.id, chosen);
+                const saved = normalizeHex(result && result.color) || chosen;
+                applyCardColor(card, saved);
+                colorBtn.style.setProperty("--ticket-btn-color", saved);
+                colorInput.value = saved;
+            } catch (err) {
+                console.error("Erro ao salvar cor personalizada:", err);
+                if (previous) {
+                    applyCardColor(card, previous);
+                    colorBtn.style.setProperty("--ticket-btn-color", previous);
+                    colorInput.value = previous;
+                } else {
+                    applyCardColor(card, null);
+                    colorBtn.style.removeProperty("--ticket-btn-color");
+                    colorInput.value = DEFAULT_CARD_COLOR;
+                }
+                showColorError("Não foi possível salvar a cor. Tente novamente.");
+            }
+        });
+
+        const resetBtn = document.createElement("button");
+        resetBtn.type = "button";
+        resetBtn.className = "ticketColorReset";
+        resetBtn.title = "Remover cor personalizada";
+
+        resetBtn.addEventListener("click", async (event) => {
+            event.stopPropagation();
+            const previous = getCardColor(t.id);
+            applyCardColor(card, null);
+            colorBtn.style.removeProperty("--ticket-btn-color");
+            colorInput.value = DEFAULT_CARD_COLOR;
+            try {
+                await persistCardColor(t.id, null);
+            } catch (err) {
+                console.error("Erro ao remover cor personalizada:", err);
+                if (previous) {
+                    applyCardColor(card, previous);
+                    colorBtn.style.setProperty("--ticket-btn-color", previous);
+                    colorInput.value = previous;
+                }
+                showColorError("Não foi possível remover a cor. Tente novamente.");
+            }
+        });
+
+        colorBtn.addEventListener("click", (event) => {
+            event.stopPropagation();
+            openColorPicker();
+        });
+
+        actions.append(colorBtn, resetBtn, colorInput);
+        body.appendChild(actions);
+
+        return card;
+    };
+
+        header.addEventListener("click", (event) => {
+            event.stopPropagation();
+            if (card.classList.contains("dragging")) return;
+            toggleCard();
+        });
+
+        header.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                toggleCard();
+            }
+        });
+
+        const currentColor = getCardColor(t.id);
+        applyCardColor(card, currentColor);
+
+        const actions = document.createElement("div");
+        actions.className = "ticketActions";
+
+        const colorBtn = document.createElement("button");
+        colorBtn.type = "button";
+        colorBtn.className = "ticketColorBtn";
+        colorBtn.title = "Alterar cor do card";
+        colorBtn.setAttribute("aria-label", "Alterar cor do card");
+        colorBtn.innerHTML = '<svg class="ticketColorIcon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 20h4l9.6-9.6a2.2 2.2 0 0 0-3.1-3.1L5 12.8V20z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6"></path><path d="M12.5 6.5l5 5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6"></path></svg>';
+        if (currentColor) {
+            colorBtn.style.setProperty("--ticket-btn-color", currentColor);
+        }
+
+        const colorInput = document.createElement("input");
+        colorInput.type = "color";
+        colorInput.className = "ticketColorInput";
+        colorInput.value = currentColor || DEFAULT_CARD_COLOR;
+
+        const openColorPicker = () => {
+            if (typeof colorInput.showPicker === "function") {
+                colorInput.showPicker();
+            } else {
+                colorInput.click();
+            }
+        };
+
+        colorInput.addEventListener("input", (event) => {
+            const preview = normalizeHex(event.target.value);
+            if (!preview) return;
+            applyCardColor(card, preview);
+            colorBtn.style.setProperty("--ticket-btn-color", preview);
+        });
+
+        colorInput.addEventListener("change", async (event) => {
+            const chosen = normalizeHex(event.target.value);
+            const previous = getCardColor(t.id);
+            if (!chosen) {
+                event.target.value = previous || DEFAULT_CARD_COLOR;
+                return;
+            }
+            if (chosen === previous) {
+                applyCardColor(card, chosen);
+                colorBtn.style.setProperty("--ticket-btn-color", chosen);
+                return;
+            }
+
+            applyCardColor(card, chosen);
+            colorBtn.style.setProperty("--ticket-btn-color", chosen);
+
+            try {
+                const result = await persistCardColor(t.id, chosen);
+                const saved = normalizeHex(result && result.color) || chosen;
+                applyCardColor(card, saved);
+                colorBtn.style.setProperty("--ticket-btn-color", saved);
+                colorInput.value = saved;
+            } catch (err) {
+                console.error("Erro ao salvar cor personalizada:", err);
+                if (previous) {
+                    applyCardColor(card, previous);
+                    colorBtn.style.setProperty("--ticket-btn-color", previous);
+                    colorInput.value = previous;
+                } else {
+                    applyCardColor(card, null);
+                    colorBtn.style.removeProperty("--ticket-btn-color");
+                    colorInput.value = DEFAULT_CARD_COLOR;
+                }
+                showColorError("Não foi possível salvar a cor. Tente novamente.");
+            }
+        });
+
+        const resetBtn = document.createElement("button");
+        resetBtn.type = "button";
+        resetBtn.className = "ticketColorReset";
+        resetBtn.title = "Remover cor personalizada";
+
+        resetBtn.addEventListener("click", async (event) => {
+            event.stopPropagation();
+            const previous = getCardColor(t.id);
+            applyCardColor(card, null);
+            colorBtn.style.removeProperty("--ticket-btn-color");
+            colorInput.value = DEFAULT_CARD_COLOR;
+            try {
+                await persistCardColor(t.id, null);
+            } catch (err) {
+                console.error("Erro ao remover cor personalizada:", err);
+                if (previous) {
+                    applyCardColor(card, previous);
+                    colorBtn.style.setProperty("--ticket-btn-color", previous);
+                    colorInput.value = previous;
+                }
+                showColorError("Não foi possível remover a cor. Tente novamente.");
+            }
+        });
+
+        colorBtn.addEventListener("click", (event) => {
+            event.stopPropagation();
+            openColorPicker();
+        });
+
+        actions.append(colorBtn, resetBtn, colorInput);
+        body.appendChild(actions);
+
+        return card;
+    };
 
         colorInput.addEventListener("input", (event) => {
             const preview = normalizeHex(event.target.value);

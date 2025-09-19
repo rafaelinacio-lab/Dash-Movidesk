@@ -20,7 +20,6 @@
     <button id="searchBtn">🔍</button>
 </div>
 
-
             <div class="notif">
                 <button id="notifBtn" class="btnGhost sm" aria-label="Notificações">
                     🔔
@@ -886,7 +885,6 @@
             return card;
         };
 
-
         const renderColumns = () => {
             document.getElementById("countNovos").textContent       = colData.novos.length;
             document.getElementById("countAtendimento").textContent = colData.atendimento.length;
@@ -1042,7 +1040,6 @@
                 const ag = ensureDonutHoldersAgents(); if (ag.msg) ag.msg.textContent="Erro ao buscar dados."; renderLegendAgents({});
                 return;
             }
-
 
             // Total do mês (vem do backend)
             document.getElementById("totalTickets").innerText = dados.counts?.CreatedThisMonth ?? dados.counts?.MonthOpenedAll ?? 0;
@@ -1491,74 +1488,111 @@
         }
     })();
 
-    const searchBtn = document.getElementById("searchBtn");
-    const closeSearchModal = document.getElementById("closeSearchModal");
-    const searchModal = document.getElementById("searchModal");
-    const searchResult = document.getElementById("searchResult");
-    const openTicketLink = document.getElementById("openTicketLink");
 
-    searchBtn.addEventListener("click", async () => {
-        const ticketId = document.getElementById("ticketId").value;
-        if (!ticketId) {
-            alert("Por favor, insira um ID de ticket.");
-            return;
-        }
+const searchBtn = document.getElementById("searchBtn");
+const closeSearchModal = document.getElementById("closeSearchModal");
+const searchModal = document.getElementById("searchModal");
+const searchResult = document.getElementById("searchResult");
+const openTicketLink = document.getElementById("openTicketLink");
+const ticketInput = document.getElementById("ticketId");
 
-        try {
-            const response = await fetch(`/api/ticket/${ticketId}`);
-            if (response.ok) {
-                const ticket = await response.json();
-                searchResult.innerHTML = `
-                    <h4>#${ticket.id} - ${ticket.subject}</h4>
-                    <p><b>Status:</b> ${ticket.status}</p>
-                    <p><b>Solicitante:</b> ${ticket.requester}</p>
-                    <p><b>Organização:</b> ${ticket.requesterOrganization}</p>
-                    <p><b>Responsável:</b> ${ticket.owner}</p>
-                    <p><b>Equipe:</b> ${ticket.ownerTeam}</p>
-                    <p><b>Data de Criação:</b> ${new Date(ticket.createdDate).toLocaleDateString()}</p>
-                    <hr>
-                    <h5>Ações do Ticket</h5>
-                    <div>
-                        ${ticket.actions.map(action => `
-                            <div class="action">
-                                <p><b>Data:</b> ${new Date(action.createdDate).toLocaleString()}</p>
-                                <p><b>Autor:</b> ${action.createdBy}</p>
-                                <p><b>Descrição:</b></p>
-                                <div>${action.description}</div>
-                            </div>
-                        `).join('')}
-                    </div>
-                `;
-                openTicketLink.href = `https://atendimento.viasoft.com.br/Ticket/Edit/${ticket.id}`;
-                openTicketLink.hidden = false;
-                searchModal.classList.add("show");
-            } else {
-                alert("Ticket não encontrado.");
-                openTicketLink.hidden = true;
-                openTicketLink.href = "#";
-            }
-        } catch (error) {
-            console.error("Erro ao buscar ticket:", error);
-            alert("Erro ao buscar ticket.");
-            openTicketLink.hidden = true;
-            openTicketLink.href = "#";
-        }
-    });
-
-    closeSearchModal.addEventListener("click", () => {
+const setSearchModalVisibility = (visible) => {
+    if (visible) {
+        searchModal.classList.add("show");
+        searchModal.setAttribute("aria-hidden", "false");
+    } else {
         searchModal.classList.remove("show");
-        openTicketLink.hidden = true;
-        openTicketLink.href = "#";
+        searchModal.setAttribute("aria-hidden", "true");
+    }
+};
+
+const startSearchLoading = () => {
+    searchBtn.disabled = true;
+    searchBtn.classList.add("loading");
+    searchResult.innerHTML = `
+        <div class="search-loading">
+            <span class="loadingSpinner" aria-hidden="true"></span>
+            <span>Buscando ticket...</span>
+        </div>
+    `;
+    openTicketLink.hidden = true;
+    openTicketLink.href = "#";
+    setSearchModalVisibility(true);
+};
+
+const finishSearchLoading = () => {
+    searchBtn.disabled = false;
+    searchBtn.classList.remove("loading");
+};
+
+searchBtn.addEventListener("click", async () => {
+    const ticketId = (ticketInput?.value || "").trim();
+    if (!ticketId) {
+        alert("Por favor, insira um ID de ticket.");
+        return;
+    }
+
+    startSearchLoading();
+
+    try {
+        const response = await fetch(`/api/ticket/${ticketId}`);
+        if (response.ok) {
+            const ticket = await response.json();
+            searchResult.innerHTML = `
+                <h4>#${ticket.id} - ${ticket.subject}</h4>
+                <p><b>Status:</b> ${ticket.status}</p>
+                <p><b>Solicitante:</b> ${ticket.requester}</p>
+                <p><b>Organização:</b> ${ticket.requesterOrganization}</p>
+                <p><b>Responsável:</b> ${ticket.owner}</p>
+                <p><b>Equipe:</b> ${ticket.ownerTeam}</p>
+                <p><b>Data de Criação:</b> ${new Date(ticket.createdDate).toLocaleDateString()}</p>
+                <hr>
+                <h5>Ações do Ticket</h5>
+                <div>
+                    ${ticket.actions.map(action => `
+                        <div class="action">
+                            <p><b>Data:</b> ${new Date(action.createdDate).toLocaleString()}</p>
+                            <p><b>Autor:</b> ${action.createdBy}</p>
+                            <p><b>Descrição:</b></p>
+                            <div>${action.description}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            openTicketLink.href = `https://atendimento.viasoft.com.br/Ticket/Edit/${ticket.id}`;
+            openTicketLink.hidden = false;
+        } else {
+            searchResult.innerHTML = '<p class="search-feedback error">Ticket não encontrado.</p>';
+        }
+    } catch (error) {
+        console.error("Erro ao buscar ticket:", error);
+        searchResult.innerHTML = '<p class="search-feedback error">Erro ao buscar ticket.</p>';
+    } finally {
+        finishSearchLoading();
+    }
+});
+
+closeSearchModal.addEventListener("click", () => {
+    setSearchModalVisibility(false);
+    openTicketLink.hidden = true;
+    openTicketLink.href = "#";
+    searchResult.innerHTML = "";
+    if (ticketInput) {
+        ticketInput.focus();
+    }
+});
+if (ticketInput) {
+    ticketInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            searchBtn.click();
+        }
     });
+}
+
 </script>
 </body>
 </html>
 </body>
 </html>
-
-
-
-
-
-
 

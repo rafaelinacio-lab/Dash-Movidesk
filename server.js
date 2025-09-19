@@ -49,6 +49,29 @@ try {
     await db.query(`
         CREATE TABLE IF NOT EXISTS user_ticket_orders (
             user_id INT NOT NULL,
+            ticket_id VARCHAR(48) NOT NULL,
+            color CHAR(7) NOT NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (user_id, ticket_id),
+            CONSTRAINT fk_user_card_colors_user FOREIGN KEY (user_id)
+                REFERENCES users(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+    await db.query(`
+        CREATE TABLE IF NOT EXISTS melhorias (
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            titulo VARCHAR(150) NOT NULL,
+            descricao TEXT NOT NULL,
+            autor VARCHAR(120) NOT NULL,
+            status VARCHAR(40) NOT NULL DEFAULT 'Enviada',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+    await db.query(`
+        CREATE TABLE IF NOT EXISTS user_ticket_orders (
+            user_id INT NOT NULL,
             column_key VARCHAR(32) NOT NULL,
             ticket_order TEXT NOT NULL,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

@@ -1292,6 +1292,8 @@ body.loginPage .appFooter {
   cursor: pointer;
   transition: all 0.25s ease;
   box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  position: relative;
+  overflow: hidden;
 }
 
 .search-bubble button:hover {
@@ -1303,5 +1305,77 @@ body.loginPage .appFooter {
 body.dark .search-bubble {
   background: rgba(17, 24, 39, 0.6);
   border: 1px solid rgba(148,163,184,0.25);
+}
+
+.search-bubble button.loading {
+  color: transparent;
+  pointer-events: none;
+}
+.search-bubble button.loading::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border-radius: 50%;
+  border: 2px solid rgba(37,99,235,0.35);
+  border-top-color: rgba(37,99,235,0.85);
+  animation: spin 0.75s linear infinite;
+}
+body.dark .search-bubble button.loading::after {
+  border-color: rgba(148,197,255,0.35);
+  border-top-color: rgba(148,197,255,0.7);
+}
+
+.search-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: inherit;
+}
+.search-loading .loadingSpinner {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid rgba(37,99,235,0.3);
+  border-top-color: rgba(37,99,235,0.75);
+  animation: spin 0.75s linear infinite;
+}
+body.dark .search-loading .loadingSpinner {
+  border-color: rgba(148,197,255,0.28);
+  border-top-color: rgba(148,197,255,0.7);
+}
+.search-feedback {
+  margin: 12px 0 4px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.search-feedback.error {
+  color: #dc2626;
+}
+body.dark .search-feedback.error {
+  color: #f87171;
+}
+
+.ticket {
+    cursor: pointer;
+    max-height: 80px;
+    transition: max-height 0.5s ease-in-out;
+    overflow: hidden;
+}
+
+.ticket.expanded {
+    max-height: 500px;
+}
+
+.ticket .ticket-details {
+    display: none;
+}
+
+.ticket.expanded .ticket-details {
+    display: block;
 }
 
