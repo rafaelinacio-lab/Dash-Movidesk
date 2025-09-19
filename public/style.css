@@ -1076,8 +1076,8 @@ body.loginPage {
   position: relative;
   display: flex;
   justify-content: center;
-  margin-bottom: 18px;
-  height: 48px;
+  margin-bottom: 5px;
+  height: 130px;
 }
 
 .loginLogo::after {
@@ -1090,7 +1090,7 @@ body.loginPage {
 }
 
 .loginLogo img {
-  width: 140px;
+  width: 40px;
   opacity: 0;
 }
 
@@ -1112,7 +1112,7 @@ body.loginPage {
 }
 
 .loginCard input {
-  width: 100%;
+  width: 95%;
   padding: 14px 18px;
   font-size: 16px;
   border-radius: 16px;
