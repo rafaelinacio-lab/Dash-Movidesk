@@ -1462,6 +1462,7 @@
         <h3 id="searchModalTitle">Resultado da Busca</h3>
         <div id="searchResult"></div>
         <div class="modalActions">
+            <a id="openTicketLink" class="btnGhost" href="#" target="_blank" rel="noopener noreferrer" hidden>Abrir ticket</a>
             <button id="closeSearchModal" class="btnGhost">Fechar</button>
         </div>
     </div>
@@ -1494,6 +1495,7 @@
     const closeSearchModal = document.getElementById("closeSearchModal");
     const searchModal = document.getElementById("searchModal");
     const searchResult = document.getElementById("searchResult");
+    const openTicketLink = document.getElementById("openTicketLink");
 
     searchBtn.addEventListener("click", async () => {
         const ticketId = document.getElementById("ticketId").value;
@@ -1527,18 +1529,26 @@
                         `).join('')}
                     </div>
                 `;
+                openTicketLink.href = `https://atendimento.viasoft.com.br/Ticket/Edit/${ticket.id}`;
+                openTicketLink.hidden = false;
                 searchModal.classList.add("show");
             } else {
                 alert("Ticket não encontrado.");
+                openTicketLink.hidden = true;
+                openTicketLink.href = "#";
             }
         } catch (error) {
             console.error("Erro ao buscar ticket:", error);
             alert("Erro ao buscar ticket.");
+            openTicketLink.hidden = true;
+            openTicketLink.href = "#";
         }
     });
 
     closeSearchModal.addEventListener("click", () => {
         searchModal.classList.remove("show");
+        openTicketLink.hidden = true;
+        openTicketLink.href = "#";
     });
 </script>
 </body>
