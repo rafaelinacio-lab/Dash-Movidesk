@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <title>Relatórios - Dash Movidesk</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="style.css" rel="stylesheet" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
@@ -17,7 +18,7 @@
     <script>
       function toggleTheme(){ document.body.classList.toggle('dark'); }
     </script>
-  </head>
+</head>
 <body>
     <div class="container">
         <header>
@@ -31,480 +32,217 @@
                 <a href="/logout" id="logoutBtn" class="btnGhost sm danger" title="Sair">🚪 Sair</a>
             </div>
         </header>
-        <script>
-        // Wrap icon + label so only icon shows when collapsed
-        (function(){
-          const actions = document.querySelector('.acoes'); if(!actions) return;
-          function iconize(el){
-            if(!el || el.dataset.iconized) return;
-            const txt=(el.textContent||'').trim(); if(!txt) return;
-            const sp=txt.indexOf(' '); const icon= sp>-1? txt.slice(0,sp):txt; const label= sp>-1? txt.slice(sp+1):'';
-            el.innerHTML='';
-            const i=document.createElement('span'); i.className='icon'; i.setAttribute('aria-hidden','true'); i.textContent=icon; el.appendChild(i);
-            const L=document.createElement('span'); L.className='label'; L.textContent=label; el.appendChild(L);
-            el.dataset.iconized='1';
-          }
-          function scan(){ actions.querySelectorAll('a.btnGhost.sm,button.btnGhost.sm').forEach(iconize); }
-          scan();
-          new MutationObserver(scan).observe(actions,{childList:true,subtree:true,characterData:true});
-        })();
-        </script>
-        <section class="adminSection">
-            <h2>📊 Relatórios por Equipe</h2>
-            <div class="adminForm" style="margin:8px 0 12px; align-items: flex-start; gap:12px;">
-                <div id="teamPickerAdmin" style="display:none;">
-                    <label style="display:block; font-weight:600; margin-bottom:6px;">Equipes</label>
-                    <select id="teamSelect" multiple size="6" style="min-width:360px"></select>
-                </div>
-                <div id="teamReadOnlyBox" style="display:none;">
-                    <label style="display:block; font-weight:600; margin-bottom:6px;">Equipe</label>
-                    <div id="teamReadOnly" class="badge" style="background:#2563eb">-</div>
-                </div>
-                <div style="min-width:260px;">
-                    <label style="display:block; font-weight:600; margin-bottom:6px;">Opções</label>
-                    <div style="display:flex; gap:12px; flex-wrap:wrap;">
-                      <div>
-                        <div style="font-weight:600; font-size:12px; opacity:.8; margin-bottom:4px;">Incluir status</div>
-                        <label><input type="checkbox" id="optOpen" checked> Abertos</label><br>
-                        <label><input type="checkbox" id="optClosed" checked> Fechados</label><br>
-                        <label><input type="checkbox" id="optResolved" checked> Resolvidos</label><br>
-                        <label><input type="checkbox" id="optCanceled" checked> Cancelados</label>
-                      </div>
-                      <div>
-                        <div style="font-weight:600; font-size:12px; opacity:.8; margin-bottom:4px;">Exibir</div>
-                        <label><input type="checkbox" id="optTotais" checked> Totais por equipe</label><br>
-                        <label><input type="checkbox" id="optAgentes" checked> Por agente</label>
-                      </div>
-                      <div>
-                        <div style="font-weight:600; font-size:12px; opacity:.8; margin-bottom:4px;">Agente</div>
-                        <select id="agentSelect" style="min-width:220px; height:36px; border:1px solid #d1d5db; border-radius:8px; padding:0 8px;">
-                          <option value="">Todos</option>
-                        </select>
-                        <div style="font-size:11px; opacity:.7; margin-top:4px;">Lista baseada nos tickets atuais (owner).</div>
-                      </div>
-                      <div>
-                        <div style="font-weight:600; font-size:12px; opacity:.8; margin-bottom:4px;">Período</div>
-                        <label style="display:block; margin-bottom:4px;">De: <input type="date" id="dateStart"></label>
-                        <label style="display:block;">Até: <input type="date" id="dateEnd"></label>
-                      </div>
-                    </div>
-                </div>
-                <div style="align-self:flex-end;">
-                    <button id="btnGerar" class="btnSalvar">Gerar Relatório</button>
-                </div>
-            </div>
-            <div style="display:flex; gap:10px; align-items:center; margin-bottom:8px;">
-                <button id="btnCsv" class="btnGray">Exportar CSV</button>
-                <button id="btnXlsx" class="btnGray">Exportar Excel</button>
-                <button id="btnPdf" class="btnGray">Exportar PDF</button>
-            </div>
-            <div id="relatorioConteudo"></div>
-            <div id="printArea"></div>
-        </section>
-        <script>
-        // Popula o select de Agentes com base nos tickets atuais (owner)
-        (async function(){
-          const sel = document.getElementById('agentSelect'); if(!sel) return;
-          function norm(s){ return (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(); }
-          try {
-            const r = await fetch('/api/tickets');
-            if (!r.ok) throw new Error('HTTP '+r.status);
-            const data = await r.json();
-            const owners = Array.from(new Set((data.tickets||[]).map(t => t.owner || 'Não atribuído')))
-                                .sort((a,b)=>a.localeCompare(b,'pt-BR'));
-            owners.forEach(o=>{ const opt=document.createElement('option'); opt.value=o; opt.textContent=o; sel.appendChild(opt); });
-            // Define padrão para o usuário logado se corresponder a algum owner
-            try {
-              const meResp = await fetch('/api/me');
-              if (meResp.ok) {
-                const me = await meResp.json();
-                const meName = norm(me.username||'');
-                const match = owners.find(o => norm(o).includes(meName));
-                if (match) sel.value = match;
-              }
-            } catch {}
-          } catch(e){ console.warn('Falha ao carregar agentes do kanban atual', e); }
-        })();
-        </script>
 
-        <hr style="margin: 24px 0;">
+        <!-- 🔍 Pesquisa de Tickets por Serviço -->
         <section class="adminSection">
-            <h2>⏱️ Relatório de SLA por Ticket</h2>
+            <h2>🔍 Pesquisa de Tickets por Serviço</h2>
             <div class="adminForm" style="margin:8px 0 12px; align-items: flex-end; gap:12px;">
                 <div>
-                    <label style="display:block; font-weight:600; margin-bottom:6px;">ID do Ticket</label>
-                    <input type="number" id="ticketIdInput" style="min-width:150px" placeholder="Ex: 12345">
+                    <label style="display:block; font-weight:600; margin-bottom:6px;">Termo de Serviço</label>
+                    <input list="serviceOptions" id="serviceSearchInput" style="min-width:300px" placeholder="Selecione um serviço">
+                    <datalist id="serviceOptions">
+                        <option value="Agronegócio">
+                        <option value="Construshow">
+                        <option value="Agronegócio » Fiscal - Agrotitan">
+                        <option value="Agronegócio » Orion - Agrotitan">
+                        <option value="Agronegócio » Oracle Cloud">
+                        <option value="Agrotitan Fazendas">
+                        <option value="Analytics - B.I">
+                        <option value="CRM » Varejo">
+                        <option value="Supermercados">
+                        <option value="Supermercados » Fiscal - Supermercados">
+                        <option value="Voors">
+                    </datalist>
                 </div>
                 <div>
-                    <button id="btnGerarSla" class="btnSalvar">Consultar SLA</button>
+                    <label style="display:block; font-weight:600; margin-bottom:6px;">Período</label>
+                    <label>De: <input type="date" id="serviceDateStart"></label><br>
+                    <label>Até: <input type="date" id="serviceDateEnd"></label>
+                </div>
+                <div>
+                    <button id="btnSearchService" class="btnSalvar">Pesquisar</button>
                 </div>
             </div>
-            <div id="slaConteudo"></div>
+            <div id="serviceSearchResults"></div>
         </section>
 
+        <!-- ⚙️ Administração de CustomFields (somente admin) -->
+        <hr style="margin:24px 0;">
+        <section id="customFieldsAdmin" class="adminSection" style="display:none;">
+            <h2>⚙️ Custom Fields por Serviço</h2>
+            <div class="adminForm">
+                <input type="text" id="cfService" placeholder="Serviço (ex: Agronegócio)" />
+                <input type="number" id="cfId" placeholder="Campo" />
+                <input type="number" id="cfRuleId" placeholder="Regra de Exibição" />
+                <button id="btnAddCF" class="btnSalvar">Salvar</button>
+            </div>
+            <table class="adminTable" id="cfTable">
+                <thead>
+                    <tr>
+                        <th>Serviço</th>
+                        <th>customFieldId</th>
+                        <th>customFieldRuleId</th>
+                        <th>Ação</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </section>
     </div>
+
     <div class="appFooter">Desenvolvido para Viasoft © 2025</div>
 
-    <script>
-    (function(){
-        const elTeams = document.getElementById('teamSelect');
-        const elBtn = document.getElementById('btnGerar');
-        const elOut = document.getElementById('relatorioConteudo');
-        const elPrint = document.getElementById('printArea');
-        const boxAdmin = document.getElementById('teamPickerAdmin');
-        const boxReadOnly = document.getElementById('teamReadOnlyBox');
-        const elTeamRO = document.getElementById('teamReadOnly');
-        const elOpt = {
-          open: document.getElementById('optOpen'),
-          closed: document.getElementById('optClosed'),
-          resolved: document.getElementById('optResolved'),
-          canceled: document.getElementById('optCanceled'),
-          totais: document.getElementById('optTotais'),
-          agentes: document.getElementById('optAgentes'),
-        };
-        const elDate = { start: document.getElementById('dateStart'), end: document.getElementById('dateEnd') };
+    <!-- ===== Script para Pesquisa de Tickets por Serviço ===== -->
+<script>
+(function(){
+  const btn = document.getElementById("btnSearchService");
+  const input = document.getElementById("serviceSearchInput");
+  const out = document.getElementById("serviceSearchResults");
+  const dateStart = document.getElementById("serviceDateStart");
+  const dateEnd = document.getElementById("serviceDateEnd");
 
-        let lastReport = null; // guarda último payload renderizado
-        let lastFlags = null;
+  btn.addEventListener("click", async ()=>{
+    const service = input.value.trim();
+    if (!service) { alert("Informe o serviço."); return; }
+    out.innerHTML = "<p>Pesquisando...</p>";
 
-        const fmt = (n)=> new Intl.NumberFormat('pt-BR').format(n||0);
+    const qs = new URLSearchParams({ service });
+    if (dateStart.value) qs.set("start", dateStart.value);
+    if (dateEnd.value) qs.set("end", dateEnd.value);
 
-        async function initTeams(){
-            // Sempre usa a equipe do usuário (inclusive admin)
-            try{
-                const meResp = await fetch('/api/me');
-                if (!meResp.ok) { window.location.href = '/'; return; }
-                const me = await meResp.json();
-                if (!me || !me.team) { window.location.href = '/'; return; }
-                
-                if (me.role === 'admin') {
-                    // Se for admin, carrega todas as equipes
-                    boxAdmin.style.display = '';
-                    boxReadOnly.style.display = 'none';
-                    await carregarEquipesComoAdmin();
-                    // Seleciona a equipe do próprio admin por padrão
-                    for (let opt of elTeams.options) {
-                        if (opt.value === me.team) {
-                            opt.selected = true;
-                            break;
-                        }
-                    }
-                } else {
-                    // Mostra badge somente leitura e fixa a opção selecionada para não-admins
-                    boxAdmin.style.display = 'none';
-                    boxReadOnly.style.display = '';
-                    elTeamRO.textContent = me.team;
-                    elTeams.innerHTML = '';
-                    const opt = document.createElement('option');
-                    opt.value = opt.textContent = me.team;
-                    opt.selected = true;
-                    elTeams.appendChild(opt);
-                }
-            }catch(e){
-                console.error('Erro ao obter usuário', e);
-                window.location.href = '/';
-            }
-        }
+    try {
+      const r = await fetch(`/api/service-tickets?${qs.toString()}`, {
+        credentials: "include"
+      });
+      if (!r.ok) throw new Error("HTTP "+r.status);
+      const data = await r.json();
 
-        async function carregarEquipesComoAdmin(){
-            try{
-                elTeams.innerHTML = '<option>Carregando...</option>';
-                const r = await fetch('/api/report-teams');
-                if (!r.ok) throw new Error('HTTP '+r.status);
-                const teams = await r.json();
-                elTeams.innerHTML = '';
-                (teams||[]).forEach(t=>{
-                    const opt = document.createElement('option');
-                    opt.value = opt.textContent = t;
-                    elTeams.appendChild(opt);
-                });
-            }catch(e){
-                console.error('Erro ao carregar equipes', e);
-                elTeams.innerHTML = '<option>Erro ao carregar equipes</option>';
-            }
-        }
+      out.innerHTML = `
+        <div class="graficoCard">
+          <h3>Tickets — ${data.service}</h3>
+          <canvas id="serviceChart"></canvas>
+        </div>
+        <p>Total: ${data.counts.total}</p>
+        <div id="serviceTicketsTable"></div>
+      `;
 
-        function getSelecionadas(){
-            return Array.from(elTeams.selectedOptions).map(o=>o.value);
-        }
+      const ctx = document.getElementById("serviceChart").getContext("2d");
+      new Chart(ctx, {
+        type: "pie",
+        data: {
+          labels: ["Novos", "Em Atendimento", "Parados", "Fechados"],
+          datasets: [{
+            data: [
+              data.counts.new,
+              data.counts.inAttendance,
+              data.counts.stopped,
+              data.counts.closed
+            ],
+            backgroundColor: ["#2563eb","#f59e0b","#dc2626","#6b7280"]
+          }]
+        },
+        options: { responsive: true }
+      });
 
-        function getFlags(){
-            const flags = {
-              open: !!elOpt.open.checked,
-              closed: !!elOpt.closed.checked,
-              resolved: !!elOpt.resolved.checked,
-              canceled: !!elOpt.canceled.checked,
-              totais: !!elOpt.totais.checked,
-              agentes: !!elOpt.agentes.checked,
-            };
-            if(!flags.open && !flags.closed && !flags.resolved && !flags.canceled){
-              // garante pelo menos um status
-              flags.open = true;
-            }
-            if(!flags.totais && !flags.agentes){
-              flags.totais = true;
-            }
-            return flags;
-        }
+      if (data.tickets && data.tickets.length) {
+        const rows = data.tickets.map(t => `
+          <tr>
+            <td>${t.id}</td>
+            <td>${t.subject}</td>
+            <td>${t.status}</td>
+            <td>${t.ownerTeam}</td>
+            <td>${new Date(t.createdDate).toLocaleString("pt-BR")}</td>
+            <td>${(t.serviceFull || []).join(", ")}</td>
+            <td>${t.customFieldValue || "-"}</td>
+            <td><button class="btnGhost sm" onclick="verTicket(${t.id})">🔍 Ver</button></td>
+          </tr>
+        `).join("");
 
-        function render(res){
-            if(!res || !res.teams || !res.teams.length){ elOut.innerHTML = '<p>Nenhum dado.</p>'; return; }
-            const flags = getFlags();
-            lastReport = res; lastFlags = flags;
-            const parts = [];
-            // Tabela de totais por equipe
-            if (flags.totais){
-              parts.push('<div class="cardWidget azul" style="margin-bottom:14px;"><div class="cardInfo"><h3>Totais por equipe</h3></div></div>');
-              const headerCols = ['Equipe'];
-              if(flags.open) headerCols.push('Abertos');
-              if(flags.closed) headerCols.push('Fechados');
-              if(flags.resolved) headerCols.push('Resolvidos');
-              if(flags.canceled) headerCols.push('Cancelados');
-              headerCols.push('Total');
-              parts.push('<table class="adminTable"><thead><tr>'+headerCols.map(h=>`<th>${h}</th>`).join('')+'</tr></thead><tbody>');
-              res.teams.forEach(t=>{
-                  const a=t.totals; const row = [`<td>${t.team}</td>`];
-                  if(flags.open) row.push(`<td>${fmt(a.open)}</td>`);
-                  if(flags.closed) row.push(`<td>${fmt(a.closed)}</td>`);
-                  if(flags.resolved) row.push(`<td>${fmt(a.resolved)}</td>`);
-                  if(flags.canceled) row.push(`<td>${fmt(a.canceled)}</td>`);
-                  row.push(`<td>${fmt(a.total)}</td>`);
-                  parts.push('<tr>'+row.join('')+'</tr>');
-              });
-              parts.push('</tbody></table>');
-            }
+        document.getElementById("serviceTicketsTable").innerHTML = `
+          <h4>Tickets encontrados</h4>
+          <table class="adminTable">
+            <thead>
+              <tr>
+                <th>ID</th><th>Assunto</th><th>Status</th><th>Equipe</th>
+                <th>Data Criação</th><th>Serviço</th><th>Campo Adicional</th><th>Ação</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        `;
+      }
+    } catch(e){
+      out.innerHTML = `<p class="error">Erro: ${e.message}</p>`;
+    }
+  });
 
-            // Por agente, agrupado por equipe
-            if (flags.agentes){
-              res.teams.forEach(t=>{
-                  parts.push(`<div class="cardWidget roxo" style="margin-top:18px;"><div class="cardInfo"><h3>Por agente — ${t.team}</h3></div></div>`);
-                  const headerA = ['Agente'];
-                  if(flags.open) headerA.push('Abertos');
-                  if(flags.closed) headerA.push('Fechados');
-                  if(flags.resolved) headerA.push('Resolvidos');
-                  if(flags.canceled) headerA.push('Cancelados');
-                  headerA.push('Total');
-                  parts.push('<table class="adminTable" style="margin-bottom:10px"><thead><tr>'+headerA.map(h=>`<th>${h}</th>`).join('')+'</tr></thead><tbody>');
-                  const agents = Object.keys(t.perAgent).sort((a,b)=>a.localeCompare(b,'pt-BR'));
-                  agents.forEach(name=>{
-                      const a=t.perAgent[name]; const row=[`<td>${name}</td>`];
-                      if(flags.open) row.push(`<td>${fmt(a.open)}</td>`);
-                      if(flags.closed) row.push(`<td>${fmt(a.closed)}</td>`);
-                      if(flags.resolved) row.push(`<td>${fmt(a.resolved)}</td>`);
-                      if(flags.canceled) row.push(`<td>${fmt(a.canceled)}</td>`);
-                      row.push(`<td>${fmt(a.total)}</td>`);
-                      parts.push('<tr>'+row.join('')+'</tr>');
-                  });
-                  parts.push('</tbody></table>');
-              });
-            }
+  input.addEventListener("keyup", (e)=>{ if (e.key === "Enter") btn.click(); });
 
-                const html = parts.join('');
-                elOut.innerHTML = html;
-                elPrint.innerHTML = html;
-            }
+  window.verTicket = async function(ticketId){
+    try {
+      const r = await fetch(`/api/ticket/${ticketId}`, { credentials: "include" });
+      if (!r.ok) throw new Error("HTTP "+r.status);
+      const t = await r.json();
+      alert(
+        `🔎 Ticket #${t.id}\n\n` +
+        `Assunto: ${t.subject}\n` +
+        `Status: ${t.status}\n` +
+        `Equipe: ${t.ownerTeam}\n` +
+        `Solicitante: ${t.requester}\n` +
+        `Criado em: ${new Date(t.createdDate).toLocaleString("pt-BR")}`
+      );
+    } catch(e){
+      alert("Erro ao buscar detalhes: " + e.message);
+    }
+  }
+})();
 
-        async function gerar(){
-            const teams = getSelecionadas();
-            if(!teams.length){ alert('Selecione ao menos uma equipe'); return; }
-            elOut.innerHTML = '<p>Gerando...</p>';
-            
-            const controller = new AbortController();
-            const id = setTimeout(()=>controller.abort(), 12000);
-            try {
-                let url = '/api/reports';
-                const qs = new URLSearchParams();
-                qs.set('teams', teams.join(',')); // Envia as equipes para o backend
-                if (elDate.start.value) qs.set('start', elDate.start.value);
-                if (elDate.end.value) qs.set('end', elDate.end.value);
-                const qstr = qs.toString();
-                if (qstr) url += '?' + qstr;
-                
-                const r = await fetch(url, { signal: controller.signal });
-                clearTimeout(id);
-                if (!r.ok) {
-                    let msg = 'Falha ao gerar relatório ('+r.status+')';
-                    try { const err = await r.json(); if (err && err.error) msg += ': '+err.error; } catch {}
-                    elOut.innerHTML = `<p class="error">${msg}</p>`;
-                    return;
-                }
-                const data = await r.json();
-                render(data);
-            } catch (e) {
-                const aborted = e && (e.name === 'AbortError');
-                elOut.innerHTML = '<p class="error">'+(aborted ? 'Tempo esgotado ao gerar relatório.' : 'Erro ao gerar relatório.')+'</p>';
-                console.error('Erro gerar relatório', e);
-            }
-        }
+// ===== Script Administração de CustomFields =====
+(async function(){
+  try {
+    const me = await fetch("/api/me", {credentials:"include"}).then(r=>r.json());
+    if(me.role === "admin") {
+      document.getElementById("customFieldsAdmin").style.display = "";
+      loadCFs();
+    }
+  } catch {}
 
-        elBtn.addEventListener('click', gerar);
-        document.getElementById('btnCsv').addEventListener('click', ()=> exportCSV());
-        document.getElementById('btnXlsx').addEventListener('click', ()=> exportXLSX());
-        document.getElementById('btnPdf').addEventListener('click', ()=> { if(!lastReport){ alert('Gere um relatório primeiro.'); return; } window.print(); });
-        initTeams();
+  async function loadCFs(){
+    const tb = document.querySelector("#cfTable tbody");
+    tb.innerHTML = "<tr><td colspan=4>Carregando...</td></tr>";
+    const r = await fetch("/api/custom-fields", {credentials:"include"});
+    if(!r.ok) return;
+    const data = await r.json();
+    tb.innerHTML = data.map(cf=>`
+      <tr>
+        <td>${cf.service}</td>
+        <td>${cf.customFieldId}</td>
+        <td>${cf.customFieldRuleId}</td>
+        <td><button class="btnExcluir" onclick="deleteCF(${cf.id})">Excluir</button></td>
+      </tr>
+    `).join("");
+  }
 
-        function rowsFromReport(){
-            if(!lastReport) return [];
-            const f = lastFlags || getFlags();
-            const rows = [];
-            if (f.totais){
-              const header = ['Equipe'];
-              if(f.open) header.push('Abertos');
-              if(f.closed) header.push('Fechados');
-              if(f.resolved) header.push('Resolvidos');
-              if(f.canceled) header.push('Cancelados');
-              header.push('Total');
-              rows.push(header);
-              lastReport.teams.forEach(t=>{
-                  const a=t.totals; const row=[t.team];
-                  if(f.open) row.push(a.open);
-                  if(f.closed) row.push(a.closed);
-                  if(f.resolved) row.push(a.resolved);
-                  if(f.canceled) row.push(a.canceled);
-                  row.push(a.total);
-                  rows.push(row);
-              });
-              rows.push([]);
-            }
-            if (f.agentes){
-              lastReport.teams.forEach(t=>{
-                  rows.push([`Equipe: ${t.team}`]);
-                  const header = ['Agente'];
-                  if(f.open) header.push('Abertos');
-                  if(f.closed) header.push('Fechados');
-                  if(f.resolved) header.push('Resolvidos');
-                  if(f.canceled) header.push('Cancelados');
-                  header.push('Total');
-                  rows.push(header);
-                  const agents = Object.keys(t.perAgent).sort((a,b)=>a.localeCompare(b,'pt-BR'));
-                  agents.forEach(name=>{
-                      const a=t.perAgent[name]; const row=[name];
-                      if(f.open) row.push(a.open);
-                      if(f.closed) row.push(a.closed);
-                      if(f.resolved) row.push(a.resolved);
-                      if(f.canceled) row.push(a.canceled);
-                      row.push(a.total);
-                      rows.push(row);
-                  });
-                  rows.push([]);
-              });
-            }
-            return rows;
-        }
+  document.getElementById("btnAddCF").onclick = async ()=>{
+    const service = document.getElementById("cfService").value.trim();
+    const cfId = document.getElementById("cfId").value;
+    const cfRuleId = document.getElementById("cfRuleId").value;
+    if(!service||!cfId||!cfRuleId){ alert("Preencha todos os campos."); return; }
+    await fetch("/api/custom-fields", {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      credentials:"include",
+      body: JSON.stringify({ service, customFieldId:cfId, customFieldRuleId:cfRuleId })
+    });
+    loadCFs();
+  }
 
-        function exportCSV(){
-            const rows = rowsFromReport();
-            if(!rows.length){ alert('Gere um relatório primeiro.'); return; }
-            const csv = rows.map(r=> r.map(v=>{
-                if(v===undefined||v===null) return '';
-                const s = String(v).replace(/"/g,'""');
-                return /[",;\n]/.test(s) ? '"'+s+'"' : s;
-            }).join(';')).join('\n');
-            const blob = new Blob(["\ufeff"+csv], {type:'text/csv;charset=utf-8;'});
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = 'relatorio.csv'; a.click(); URL.revokeObjectURL(a.href);
-        }
-
-        function exportXLSX(){
-            const rows = rowsFromReport();
-            if(!rows.length){ alert('Gere um relatório primeiro.'); return; }
-            if (window.XLSX) {
-                const ws = XLSX.utils.aoa_to_sheet(rows);
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, 'Relatorio');
-                XLSX.writeFile(wb, 'relatorio.xlsx');
-            } else {
-                exportCSV();
-            }
-        }
-    })();
-    
-    // ===== Script para Relatório de SLA =====
-    (function(){
-        const elTicketIdInput = document.getElementById('ticketIdInput');
-        const elBtnGerarSla = document.getElementById('btnGerarSla');
-        const elSlaOut = document.getElementById('slaConteudo');
-
-        function formatarMinutos(minutos) {
-            if (minutos === 0) return "0m";
-            const dias = Math.floor(minutos / (8.75 * 60)); // 8h45m = 8.75 horas
-            const minutosRestantes = minutos % (8.75 * 60);
-            const horas = Math.floor(minutosRestantes / 60);
-            const mins = Math.round(minutosRestantes % 60);
-            
-            let resultado = "";
-            if (dias > 0) resultado += `${dias}d `;
-            if (horas > 0) resultado += `${horas}h `;
-            if (mins > 0) resultado += `${mins}m`;
-            
-            return resultado.trim();
-        }
-
-        async function gerarSla() {
-            const ticketId = elTicketIdInput.value.trim();
-            if (!ticketId) {
-                alert('Por favor, informe o ID do ticket.');
-                return;
-            }
-            elSlaOut.innerHTML = '<p>Consultando dados do ticket...</p>';
-
-            try {
-                const r = await fetch(`/api/sla/${ticketId}`);
-                if (!r.ok) {
-                    let msg = `Falha ao gerar relatório de SLA (${r.status})`;
-                    try { 
-                        const err = await r.json(); 
-                        if (err && err.error) msg += ': ' + err.error; 
-                    } catch {}
-                    elSlaOut.innerHTML = `<p class="error">${msg}</p>`;
-                    return;
-                }
-                const data = await r.json();
-                renderSla(data);
-            } catch (e) {
-                elSlaOut.innerHTML = '<p class="error">Erro de rede ao consultar o SLA.</p>';
-                console.error('Erro ao gerar relatório SLA', e);
-            }
-        }
-
-        function renderSla(data) {
-            if (!data) {
-                elSlaOut.innerHTML = '<p>Nenhum dado de SLA encontrado.</p>';
-                return;
-            }
-
-            const moviUrlBase = "app.movidesk.com"; // Configure com a URL base da sua instância do Movidesk
-            const parts = [];
-            parts.push(`<div class="cardWidget azul" style="margin-bottom:14px;"><div class="cardInfo"><h3>SLA do Ticket <a href="https://${moviUrlBase}/Ticket/Edit/${data.ticketId}" target="_blank">#${data.ticketId}</a> — ${data.assunto}</h3></div></div>`);
-            parts.push('<h4>Tempo por Equipe</h4>');
-            parts.push('<table class="adminTable"><thead><tr><th>Equipe</th><th>Tempo Gasto (útil)</th></tr></thead><tbody>');
-
-            data.slaPorEquipe.forEach(item => {
-                parts.push(`<tr><td>${item.equipe}</td><td>${formatarMinutos(item.tempo)}</td></tr>`);
-            });
-
-            parts.push('</tbody></table>');
-            
-            parts.push(`<h4 style="margin-top: 16px;">SLA Total: <span class="badge" style="background: #16a34a; font-size: 16px;">${formatarMinutos(data.slaTotal)}</span></h4>`);
-            parts.push(`<p style="font-size: 12px; opacity: 0.8;">Status atual: ${data.status || 'N/A'}<br>`);
-            parts.push(`Criado em: ${new Date(data.criadoEm).toLocaleString('pt-BR')}<br>`);
-            if(data.fechadoEm){
-               parts.push(`Finalizado em: ${new Date(data.fechadoEm).toLocaleString('pt-BR')}</p>`);
-            } else {
-               parts.push(`Finalizado em: -</p>`);
-            }
-
-            elSlaOut.innerHTML = parts.join('');
-        }
-
-        elBtnGerarSla.addEventListener('click', gerarSla);
-        elTicketIdInput.addEventListener('keyup', (event) => {
-            if (event.key === 'Enter') {
-                gerarSla();
-            }
-        });
-    })();
-    </script>
+  window.deleteCF = async (id)=>{
+    if(!confirm("Excluir este registro?")) return;
+    await fetch("/api/custom-fields/"+id,{method:"DELETE",credentials:"include"});
+    loadCFs();
+  }
+})();
+</script>
 </body>
 </html>

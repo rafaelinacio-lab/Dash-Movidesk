@@ -109,7 +109,134 @@ app.get("/", (req, res) => {
     }
     res.redirect("/dashboard");
 });
+// 🔍 Buscar tickets por servicePath (ex: "Oracle Cloud » Agronegócio")
+// 🔍 Buscar tickets por servicePath (ex: "Oracle Cloud » Agronegócio") + campo 45115
+// Mapeia cada serviço para o seu customFieldId
+const SERVICE_CUSTOM_FIELDS = {
+  "Agronegócio": 22353,
+  "Supermercados": 33421,
+  "Voors": 55678,
+  // 👉 aqui você adiciona os outros services com seus respectivos customFieldId
+};
 
+/* ================== ALTERADO AQUI ================== */
+app.get("/api/service-tickets", requireAuth, async (req, res) => {
+  try {
+    const raw = (req.query.service || "").trim();
+    const { start, end } = req.query;
+    if (!raw) return res.status(400).json({ error: "Parâmetro service obrigatório" });
+
+    // sempre considera apenas o primeiro nível
+    let [firstLevel] = raw.split("»").map(s => s.trim()).filter(Boolean);
+
+    // evita quebra de OData com aspas simples
+    const escapeOData = (s) => String(s).replace(/'/g, "''");
+
+    let filterParts = [];
+    if (firstLevel) {
+      filterParts.push(`serviceFull/any(s: s eq '${escapeOData(firstLevel)}')`);
+    }
+    if (start) filterParts.push(`createdDate ge ${start}T00:00:00.000Z`);
+    if (end)   filterParts.push(`createdDate le ${end}T23:59:59.999Z`);
+
+    const filter = filterParts.join(" and ");
+
+    const buildUrl = () => {
+  return (
+    `${MOVI_URL}?token=${MOVI_TOKEN}&$top=500` +
+    `&$select=id,subject,baseStatus,serviceFull,createdDate,ownerTeam,status` +
+    `&$expand=customFieldValues($expand=items)` +
+    `&$filter=${encodeURIComponent(filter)}`
+  );
+};
+
+
+    let url = buildUrl(true);
+    let resp;
+    try {
+      resp = await axios.get(url, { timeout: 15000 });
+    } catch (e) {
+      if (e?.response?.status === 400) {
+        url = buildUrl(false);
+        console.warn("⚠️ 400 no expand com $select. Requisitando fallback:", url);
+        resp = await axios.get(url, { timeout: 15000 });
+      } else {
+        throw e;
+      }
+    }
+
+    const data = resp.data || [];
+
+    // Descobre o customFieldId esperado para o serviço
+    let expectedFieldId = null;
+    try {
+      const [rows] = await db.query(
+        "SELECT customFieldId FROM service_custom_fields WHERE service = ? LIMIT 1",
+        [firstLevel]
+      );
+      if (rows.length) expectedFieldId = rows[0].customFieldId;
+    } catch (err) {
+      console.error("Erro ao buscar customFieldId do serviço:", err.message);
+    }
+
+    const coalesce = (...vals) => {
+      for (const v of vals) {
+        if (v !== undefined && v !== null && String(v).trim() !== "") return v;
+      }
+      return null;
+    };
+
+    const tickets = data.map(t => {
+      let campoValor = null;
+if (expectedFieldId) {
+  const match = (t.customFieldValues || []).find(cf =>
+    Number(cf.customFieldId) === Number(expectedFieldId)
+  );
+
+  if (match) {
+    // Se houver itens (lista), pega os nomes
+    if (Array.isArray(match.items) && match.items.length > 0) {
+      campoValor = match.items.map(i => i.customFieldItem).join(", ");
+    }
+    // Se não houver itens, usa os campos de texto/valor
+    else {
+      campoValor = coalesce(match.customFieldItem, match.value, match.valueText, match.text);
+    }
+  }
+}
+
+      return {
+        id: t.id,
+        subject: t.subject,
+        status: t.status,
+        baseStatus: t.baseStatus,
+        ownerTeam: t.ownerTeam,
+        createdDate: t.createdDate,
+        serviceFull: t.serviceFull || [],
+        customFieldValue: campoValor
+      };
+    });
+
+    const counts = {
+      total: tickets.length,
+      new: tickets.filter(t => t.baseStatus === "New").length,
+      inAttendance: tickets.filter(t => t.baseStatus === "InAttendance").length,
+      stopped: tickets.filter(t => t.baseStatus === "Stopped").length,
+      closed: tickets.filter(t => ["Closed", "Resolved"].includes(t.baseStatus)).length,
+    };
+
+    res.json({
+      service: raw,
+      serviceFirstLevel: firstLevel,
+      counts,
+      tickets
+    });
+  } catch (err) {
+    console.error("❌ Erro ao buscar tickets por serviço:", err.message);
+    res.status(500).json({ error: "Falha ao consultar tickets" });
+  }
+});
+/* ================== /ALTERADO ================== */
 app.post("/login", async (req, res) => {
     const { username, password } = req.body;
     if (!username || !password)
@@ -344,6 +471,43 @@ app.get("/admin/users", requireAdmin, async (req, res) => {
     const [rows] = await db.query("SELECT id, username, team, role FROM users");
     res.json(rows);
 });
+/* ================== CUSTOM FIELDS ADMIN ================== */
+app.get("/api/custom-fields", requireAdmin, async (req, res) => {
+  try {
+    const [rows] = await db.query("SELECT * FROM service_custom_fields ORDER BY service");
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: "Erro ao listar custom fields" });
+  }
+});
+
+app.post("/api/custom-fields", requireAdmin, async (req, res) => {
+  const { service, customFieldId, customFieldRuleId } = req.body;
+  if (!service || !customFieldId || !customFieldRuleId) {
+    return res.status(400).json({ error: "Campos obrigatórios ausentes" });
+  }
+  try {
+    await db.query(
+      `INSERT INTO service_custom_fields (service, customFieldId, customFieldRuleId)
+       VALUES (?, ?, ?)
+       ON DUPLICATE KEY UPDATE customFieldId=VALUES(customFieldId), customFieldRuleId=VALUES(customFieldRuleId)`,
+      [service, customFieldId, customFieldRuleId]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "Erro ao salvar" });
+  }
+});
+
+app.delete("/api/custom-fields/:id", requireAdmin, async (req, res) => {
+  try {
+    const [r] = await db.query("DELETE FROM service_custom_fields WHERE id = ?", [req.params.id]);
+    if (r.affectedRows === 0) return res.status(404).json({ error: "Registro não encontrado" });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "Erro ao excluir" });
+  }
+});
 
 
 app.post("/admin/users/update", requireAdmin, async (req, res) => {
@@ -529,20 +693,18 @@ app.get("/api/tickets", async (req, res) => {
             return res.json({ counts:{}, countsPerUrgency:{}, countsPerOwner:{}, tickets:[] });
         }
 
-
         const todayLocalISO = ymd(new Date());
 
-    // Busca apenas tickets ativos: New, InAttendance, Stopped
-    let filter = `ownerTeam eq '${userTeam}' and (baseStatus eq 'New' or baseStatus eq 'InAttendance' or baseStatus eq 'Stopped')`;
+        // Busca apenas tickets ativos: New, InAttendance, Stopped
+        let filter = `ownerTeam eq '${userTeam}' and (baseStatus eq 'New' or baseStatus eq 'InAttendance' or baseStatus eq 'Stopped')`;
 
         const url =
             `${MOVI_URL}?token=${MOVI_TOKEN}&$top=500` +
-            `&$select=id,subject,urgency,baseStatus,status,ownerTeam,createdDate,closedIn,slaSolutionDate` +
+            `&$select=id,subject,urgency,baseStatus,status,ownerTeam,createdDate,closedIn,slaSolutionDate,serviceFull` +
             `&$expand=owner($select=id,businessName),customFieldValues` +
             `&$filter=${encodeURIComponent(filter)}`;
 
         const { data } = await axios.get(url, { timeout: 15000 });
-
 
         const tickets = data.map((t) => {
             let prevISO = null;
@@ -571,6 +733,7 @@ app.get("/api/tickets", async (req, res) => {
                 daysUntilDue,
                 dueCategory,
                 canceled: isCanceled(t),
+                serviceFull: t.serviceFull || [],
             };
         });
 
