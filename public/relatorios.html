@@ -1,248 +1,438 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8" />
-    <title>Relatórios - Dash Movidesk</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="style.css" rel="stylesheet" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <style>
-      #teamSelect { max-width: 520px; }
-      @media print {
-        header, .adminForm, .appFooter, .acoes, hr { display:none !important; }
-        #printArea { display:block !important; }
-      }
-      #printArea { display:none; }
-      .error { color: #ef4444; font-weight: bold; }
-    </style>
-    <script>
-      function toggleTheme(){ document.body.classList.toggle('dark'); }
-    </script>
+  <meta charset="UTF-8" />
+  <title>Relatórios - Dash Movidesk</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- ▼ libs de export -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
+  <!-- ▲ -->
+  <link href="style.css" rel="stylesheet" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    #teamSelect { max-width: 520px; }
+    @media print { header,.adminForm,.appFooter,.acoes,hr { display:none!important } #printArea{display:block!important} }
+    #printArea{display:none}
+    .error{color:#ef4444;font-weight:700}
+    .filters{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}
+    .filters>div label{display:block;font-weight:600;margin-bottom:6px}
+    .pill{padding:.15rem .5rem;border-radius:999px;background:#1118270d;font-size:.8rem}
+    .exportBar{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+  </style>
+  <script>function toggleTheme(){document.body.classList.toggle('dark');}</script>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1 class="brandTitle">
-                <img src="/logo-viasoft.png" alt="Viasoft" class="headerLogo" />
-                Relatórios <span>Movidesk</span>
-            </h1>
-            <div class="acoes">
-                <button onclick="toggleTheme()" class="btnGhost sm" title="Tema">🌙 Tema</button>
-                <a href="/dashboard" class="btnGhost sm" title="Voltar">🔙 Voltar</a>
-                <a href="/logout" id="logoutBtn" class="btnGhost sm danger" title="Sair">🚪 Sair</a>
-            </div>
-        </header>
+  <div class="container">
+    <header>
+      <h1 class="brandTitle">
+        <img src="/logo-viasoft.png" alt="Viasoft" class="headerLogo" />
+        Relatórios <span>Movidesk</span>
+      </h1>
+      <div class="acoes">
+        <button onclick="toggleTheme()" class="btnGhost sm" title="Tema">🌙 Tema</button>
+        <a href="/dashboard" class="btnGhost sm" title="Voltar">🔙 Voltar</a>
+        <a href="/logout" id="logoutBtn" class="btnGhost sm danger" title="Sair">🚪 Sair</a>
+      </div>
+    </header>
 
-        <!-- 🔍 Pesquisa de Tickets por Serviço -->
-        <section class="adminSection">
-            <h2>🔍 Pesquisa de Tickets por Serviço</h2>
-            <div class="adminForm" style="margin:8px 0 12px; align-items: flex-end; gap:12px;">
-                <div>
-                    <label style="display:block; font-weight:600; margin-bottom:6px;">Termo de Serviço</label>
-                    <input list="serviceOptions" id="serviceSearchInput" style="min-width:300px" placeholder="Selecione um serviço">
-                    <datalist id="serviceOptions">
-                        <option value="Agronegócio">
-                        <option value="Construshow">
-                        <option value="Agronegócio » Fiscal - Agrotitan">
-                        <option value="Agronegócio » Orion - Agrotitan">
-                        <option value="Agronegócio » Oracle Cloud">
-                        <option value="Agrotitan Fazendas">
-                        <option value="Analytics - B.I">
-                        <option value="CRM » Varejo">
-                        <option value="Supermercados">
-                        <option value="Supermercados » Fiscal - Supermercados">
-                        <option value="Voors">
-                    </datalist>
-                </div>
-                <div>
-                    <label style="display:block; font-weight:600; margin-bottom:6px;">Período</label>
-                    <label>De: <input type="date" id="serviceDateStart"></label><br>
-                    <label>Até: <input type="date" id="serviceDateEnd"></label>
-                </div>
-                <div>
-                    <button id="btnSearchService" class="btnSalvar">Pesquisar</button>
-                </div>
-            </div>
-            <div id="serviceSearchResults"></div>
-        </section>
-
-        <!-- ⚙️ Administração de CustomFields (somente admin) -->
-        <hr style="margin:24px 0;">
-        <section id="customFieldsAdmin" class="adminSection" style="display:none;">
-            <h2>⚙️ Custom Fields por Serviço</h2>
-            <div class="adminForm">
-                <input type="text" id="cfService" placeholder="Serviço (ex: Agronegócio)" />
-                <input type="number" id="cfId" placeholder="Campo" />
-                <input type="number" id="cfRuleId" placeholder="Regra de Exibição" />
-                <button id="btnAddCF" class="btnSalvar">Salvar</button>
-            </div>
-            <table class="adminTable" id="cfTable">
-                <thead>
-                    <tr>
-                        <th>Serviço</th>
-                        <th>customFieldId</th>
-                        <th>customFieldRuleId</th>
-                        <th>Ação</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </section>
-    </div>
-
-    <div class="appFooter">Desenvolvido para Viasoft © 2025</div>
-
-    <!-- ===== Script para Pesquisa de Tickets por Serviço ===== -->
-<script>
-(function(){
-  const btn = document.getElementById("btnSearchService");
-  const input = document.getElementById("serviceSearchInput");
-  const out = document.getElementById("serviceSearchResults");
-  const dateStart = document.getElementById("serviceDateStart");
-  const dateEnd = document.getElementById("serviceDateEnd");
-
-  btn.addEventListener("click", async ()=>{
-    const service = input.value.trim();
-    if (!service) { alert("Informe o serviço."); return; }
-    out.innerHTML = "<p>Pesquisando...</p>";
-
-    const qs = new URLSearchParams({ service });
-    if (dateStart.value) qs.set("start", dateStart.value);
-    if (dateEnd.value) qs.set("end", dateEnd.value);
-
-    try {
-      const r = await fetch(`/api/service-tickets?${qs.toString()}`, {
-        credentials: "include"
-      });
-      if (!r.ok) throw new Error("HTTP "+r.status);
-      const data = await r.json();
-
-      out.innerHTML = `
-        <div class="graficoCard">
-          <h3>Tickets — ${data.service}</h3>
-          <canvas id="serviceChart"></canvas>
+    <section class="adminSection">
+      <h2>🔍 Pesquisa de Tickets por Serviço</h2>
+      <div class="adminForm filters" style="margin:8px 0 12px;">
+        <div>
+          <label>Serviço (serviceFirstLevel)</label>
+          <input list="serviceOptions" id="serviceSearchInput" style="min-width:300px" placeholder="Selecione um serviço">
+          <datalist id="serviceOptions">
+            <option value="Agronegócio">
+            <option value="Construshow">
+            <option value="Agrotitan Fazendas">
+            <option value="Analytics - B.I">
+            <option value="CRM">
+            <option value="Supermercados">
+            <option value="Voors">
+          </datalist>
         </div>
-        <p>Total: ${data.counts.total}</p>
-        <div id="serviceTicketsTable"></div>
-      `;
+        <div><label>Período • De</label><input type="date" id="serviceDateStart"></div>
+        <div><label>Período • Até</label><input type="date" id="serviceDateEnd"></div>
+        <div>
+          <label>Status</label>
+          <select id="statusFilter" style="min-width:180px">
+            <option value="">(Todos)</option>
+            <option value="PENDENTE">Pendente</option>
+            <option value="FINALIZADO">Finalizado</option>
+            <option value="CANCELADO">Cancelado</option>
+          </select>
+        </div>
+        <div><button id="btnSearchService" class="btnSalvar">Pesquisar</button></div>
+      </div>
+      <div id="serviceSearchResults"></div>
+    </section>
 
-      const ctx = document.getElementById("serviceChart").getContext("2d");
-      new Chart(ctx, {
-        type: "pie",
-        data: {
-          labels: ["Novos", "Em Atendimento", "Parados", "Fechados"],
-          datasets: [{
-            data: [
-              data.counts.new,
-              data.counts.inAttendance,
-              data.counts.stopped,
-              data.counts.closed
-            ],
-            backgroundColor: ["#2563eb","#f59e0b","#dc2626","#6b7280"]
-          }]
-        },
-        options: { responsive: true }
-      });
+    <hr style="margin:24px 0;">
+    <section id="customFieldsAdmin" class="adminSection" style="display:none;">
+      <h2>⚙️ Custom Fields por Serviço</h2>
+      <div class="adminForm">
+        <input type="text" id="cfService" placeholder="Serviço (ex: Agronegócio)" />
+        <input type="number" id="cfId" placeholder="Campo (customFieldId)" />
+        <input type="number" id="cfRuleId" placeholder="Regra de Exibição (customFieldRuleId)" />
+        <button id="btnAddCF" class="btnSalvar">Salvar</button>
+      </div>
+      <table class="adminTable" id="cfTable">
+        <thead><tr><th>SERVIÇO</th><th>CUSTOMFIELDID</th><th>CUSTOMFIELDRULEID</th><th>AÇÃO</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </section>
+  </div>
 
-      if (data.tickets && data.tickets.length) {
-        const rows = data.tickets.map(t => `
+  <div class="appFooter">Desenvolvido para Viasoft © 2025</div>
+
+  <script>
+    (function () {
+      const btn = document.getElementById("btnSearchService");
+      const input = document.getElementById("serviceSearchInput");
+      const out = document.getElementById("serviceSearchResults");
+      const dateStart = document.getElementById("serviceDateStart");
+      const dateEnd = document.getElementById("serviceDateEnd");
+      const statusSel = document.getElementById("statusFilter");
+
+      let lastData = null;   // guardamos para exportações
+
+      const fmtDateTime = (v) => {
+        if (!v) return "-";
+        const d = new Date(v);
+        return isNaN(d) ? "-" : d.toLocaleString("pt-BR");
+      };
+
+      btn.addEventListener("click", runSearch);
+      input.addEventListener("keyup", (e) => { if (e.key === "Enter") runSearch(); });
+      statusSel.addEventListener("change", runSearch);
+
+      async function runSearch(){
+        const service = input.value.trim();
+        if (!service) { alert("Informe o serviço."); return; }
+        out.innerHTML = "<p>Pesquisando...</p>";
+
+        const qs = new URLSearchParams({ service });
+        if (dateStart.value) qs.set("start", dateStart.value);
+        if (dateEnd.value) qs.set("end", dateEnd.value);
+        if (statusSel.value) qs.set("status", statusSel.value);
+
+        try {
+          const r = await fetch(`/api/service-tickets?${qs.toString()}`, { credentials: "include" });
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          const data = await r.json();
+          lastData = data;
+
+          // agrupamento para o gráfico/lista
+          const byModule = groupByModule(data.tickets || []);
+          const labels = Object.keys(byModule);
+          const values = labels.map(k => byModule[k].length);
+
+          out.innerHTML = `
+            <div class="graficoCard">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
+                <div>
+                  <h3>Tickets — ${data.serviceFirstLevel || data.service}</h3>
+                  <span class="pill">Total: ${data.counts.total}</span>
+                </div>
+                <div class="exportBar">
+                  <button class="btnGhost sm" onclick="exportModulesPDF()">📄 PDF</button>
+                  <button class="btnGhost sm" onclick="exportModulesXLSX()">📊 XLSX</button>
+                  <button class="btnGhost sm" onclick="exportModulesDOCX()">📝 DOCX</button>
+                  <span class="pill">Detalhe (IDs):</span>
+                  <button class="btnGhost sm" onclick="exportIDsPDF()">📄 PDF (IDs)</button>
+                  <button class="btnGhost sm" onclick="exportIDsXLSX()">📊 XLSX (IDs)</button>
+                  <button class="btnGhost sm" onclick="exportIDsDOCX()">📝 DOCX (IDs)</button>
+                </div>
+              </div>
+              <canvas id="serviceChart" height="220"></canvas>
+            </div>
+            <div style="margin-top:16px;">
+              <h3 style="text-align:center;margin:8px 0;">Resumo — Módulo x Rotina</h3>
+              ${renderModuleTable(byModule)}
+            </div>
+            <div id="serviceTicketsTable" style="margin-top:16px;"></div>
+          `;
+
+          // gráfico (ranking horizontal)
+          const ctx = document.getElementById("serviceChart").getContext("2d");
+          new Chart(ctx, {
+            type: "bar",
+            data: {
+              labels,
+              datasets: [{ data: values }]
+            },
+            options: {
+              indexAxis: 'y',
+              responsive: true,
+              plugins: { legend: { display:false } },
+              scales: { x: { beginAtZero: true, ticks: { precision:0 } } }
+            }
+          });
+
+          // tabela de tickets
+          const rows = (data.tickets || []).map(t => `
+            <tr>
+              <td>${t.id}</td>
+              <td>${t.subject || "-"}</td>
+              <td>${t.status || "-"}</td>
+              <td>${t.owner || "Não atribuído"}</td>
+              <td>${fmtDateTime(t.createdDate)}</td>
+              <td>${fmtDateTime(t.solvedDate || t.closedIn)}</td>
+              <td>${fmtDateTime(t.previsaoSolucao)}</td>
+              <td>${t.serviceFirstLevel || "-"}</td>
+              <td>${t.customFieldValue || "-"}</td>
+              <td><button class="btnGhost sm" onclick="verTicket(${t.id})">🔍 Ver</button></td>
+            </tr>
+          `).join("");
+
+          document.getElementById("serviceTicketsTable").innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <h4 style="margin:0">Tickets encontrados</h4>
+              ${statusSel.value ? `<span class="pill">Status: ${statusSel.value}</span>` : ""}
+            </div>
+            <table class="adminTable">
+              <thead>
+                <tr>
+                  <th>ID</th><th>ASSUNTO</th><th>STATUS</th><th>RESPONSÁVEL</th>
+                  <th>DATA CRIAÇÃO</th><th>DATA SOLUÇÃO</th><th>PREVISÃO DE SOLUÇÃO</th>
+                  <th>SERVIÇO</th><th>MÓDULO x ROTINA</th><th>AÇÃO</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          `;
+        } catch (e) {
+          out.innerHTML = `<p class="error">Erro: ${e.message}</p>`;
+        }
+      }
+
+      function groupByModule(tickets){
+        const map = {};
+        for (const t of tickets){
+          const key = (t.customFieldValue && String(t.customFieldValue).trim()) || "Sem preenchimento";
+          (map[key] ||= []).push(t);
+        }
+        // ordena por quantidade desc
+        return Object.fromEntries(Object.entries(map).sort((a,b)=>b[1].length - a[1].length));
+      }
+
+      function renderModuleTable(byModule){
+        const rows = Object.entries(byModule).map(([k, arr]) => `
           <tr>
-            <td>${t.id}</td>
-            <td>${t.subject}</td>
-            <td>${t.status}</td>
-            <td>${t.ownerTeam}</td>
-            <td>${new Date(t.createdDate).toLocaleString("pt-BR")}</td>
-            <td>${(t.serviceFull || []).join(", ")}</td>
-            <td>${t.customFieldValue || "-"}</td>
-            <td><button class="btnGhost sm" onclick="verTicket(${t.id})">🔍 Ver</button></td>
+            <td>${k}</td>
+            <td style="text-align:right">${arr.length}</td>
           </tr>
         `).join("");
-
-        document.getElementById("serviceTicketsTable").innerHTML = `
-          <h4>Tickets encontrados</h4>
-          <table class="adminTable">
-            <thead>
-              <tr>
-                <th>ID</th><th>Assunto</th><th>Status</th><th>Equipe</th>
-                <th>Data Criação</th><th>Serviço</th><th>Campo Adicional</th><th>Ação</th>
-              </tr>
-            </thead>
+        return `
+          <table class="adminTable" style="max-width:740px;margin:0 auto;">
+            <thead><tr><th>MÓDULO x ROTINA</th><th>QUANTIDADE</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
         `;
       }
-    } catch(e){
-      out.innerHTML = `<p class="error">Erro: ${e.message}</p>`;
-    }
-  });
 
-  input.addEventListener("keyup", (e)=>{ if (e.key === "Enter") btn.click(); });
+      // ---------- EXPORT (RESUMO por módulo) ----------
+      window.exportModulesXLSX = () => {
+        if (!lastData) return;
+        const byModule = groupByModule(lastData.tickets||[]);
+        const wsData = [["Módulo x Rotina","Quantidade"]];
+        for (const [k, v] of Object.entries(byModule)) wsData.push([k, v.length]);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(wsData), "Resumo");
+        XLSX.writeFile(wb, `resumo-modulo-rotina_${(lastData.serviceFirstLevel||"servico")}.xlsx`);
+      };
 
-  window.verTicket = async function(ticketId){
-    try {
-      const r = await fetch(`/api/ticket/${ticketId}`, { credentials: "include" });
-      if (!r.ok) throw new Error("HTTP "+r.status);
-      const t = await r.json();
-      alert(
-        `🔎 Ticket #${t.id}\n\n` +
-        `Assunto: ${t.subject}\n` +
-        `Status: ${t.status}\n` +
-        `Equipe: ${t.ownerTeam}\n` +
-        `Solicitante: ${t.requester}\n` +
-        `Criado em: ${new Date(t.createdDate).toLocaleString("pt-BR")}`
-      );
-    } catch(e){
-      alert("Erro ao buscar detalhes: " + e.message);
-    }
-  }
-})();
+      window.exportModulesPDF = () => {
+        if (!lastData) return;
+        const byModule = groupByModule(lastData.tickets||[]);
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ unit:"pt", format:"a4" });
+        doc.setFontSize(14);
+        doc.text(`Resumo — Módulo x Rotina (${lastData.serviceFirstLevel||lastData.service})`, 40, 40);
+        const body = Object.entries(byModule).map(([k,v]) => [k, v.length]);
+        doc.autoTable({ startY:60, head:[["Módulo x Rotina","Quantidade"]], body });
+        doc.save(`resumo-modulo-rotina_${(lastData.serviceFirstLevel||"servico")}.pdf`);
+      };
 
-// ===== Script Administração de CustomFields =====
-(async function(){
-  try {
-    const me = await fetch("/api/me", {credentials:"include"}).then(r=>r.json());
-    if(me.role === "admin") {
-      document.getElementById("customFieldsAdmin").style.display = "";
-      loadCFs();
-    }
-  } catch {}
+      window.exportModulesDOCX = async () => {
+        if (!lastData) return;
+        const byModule = groupByModule(lastData.tickets||[]);
+        const { Document, Packer, Paragraph, Table, TableRow, TableCell, WidthType, TextRun } = window.docx;
+        const rows = [
+          new TableRow({
+            children:[
+              new TableCell({ children:[new Paragraph("Módulo x Rotina")], width:{ size:70, type:WidthType.PERCENT } }),
+              new TableCell({ children:[new Paragraph("Quantidade")], width:{ size:30, type:WidthType.PERCENT } })
+            ]
+          }),
+          ...Object.entries(byModule).map(([k,v]) =>
+            new TableRow({
+              children:[
+                new TableCell({ children:[new Paragraph(String(k))] }),
+                new TableCell({ children:[new Paragraph(String(v.length))] })
+              ]
+            })
+          )
+        ];
+        const doc = new Document({
+          sections:[{
+            children:[
+              new Paragraph({ children:[ new TextRun({ text:`Resumo — Módulo x Rotina (${lastData.serviceFirstLevel||lastData.service})`, bold:true }) ] }),
+              new Table({ rows })
+            ]
+          }]
+        });
+        const blob = await Packer.toBlob(doc);
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `resumo-modulo-rotina_${(lastData.serviceFirstLevel||"servico")}.docx`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      };
 
-  async function loadCFs(){
-    const tb = document.querySelector("#cfTable tbody");
-    tb.innerHTML = "<tr><td colspan=4>Carregando...</td></tr>";
-    const r = await fetch("/api/custom-fields", {credentials:"include"});
-    if(!r.ok) return;
-    const data = await r.json();
-    tb.innerHTML = data.map(cf=>`
-      <tr>
-        <td>${cf.service}</td>
-        <td>${cf.customFieldId}</td>
-        <td>${cf.customFieldRuleId}</td>
-        <td><button class="btnExcluir" onclick="deleteCF(${cf.id})">Excluir</button></td>
-      </tr>
-    `).join("");
-  }
+      // ---------- EXPORT (DETALHE com IDs por módulo) ----------
+      window.exportIDsXLSX = () => {
+        if (!lastData) return;
+        const byModule = groupByModule(lastData.tickets||[]);
+        const wb = XLSX.utils.book_new();
+        // uma aba por grupo
+        for (const [k, arr] of Object.entries(byModule)) {
+          const aoa = [["Grupo","ID","Assunto","Status","Responsável","Criação","Solução"]];
+          arr.forEach(t => aoa.push([
+            k, t.id, t.subject||"", t.status||"", t.owner||"",
+            fmtDateTime(t.createdDate),
+            fmtDateTime(t.solvedDate || t.closedIn)
+          ]));
+          const ws = XLSX.utils.aoa_to_sheet(aoa);
+          XLSX.utils.book_append_sheet(wb, ws, k.substring(0,31) || "SemNome");
+        }
+        XLSX.writeFile(wb, `ids-por-modulo_${(lastData.serviceFirstLevel||"servico")}.xlsx`);
+      };
 
-  document.getElementById("btnAddCF").onclick = async ()=>{
-    const service = document.getElementById("cfService").value.trim();
-    const cfId = document.getElementById("cfId").value;
-    const cfRuleId = document.getElementById("cfRuleId").value;
-    if(!service||!cfId||!cfRuleId){ alert("Preencha todos os campos."); return; }
-    await fetch("/api/custom-fields", {
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      credentials:"include",
-      body: JSON.stringify({ service, customFieldId:cfId, customFieldRuleId:cfRuleId })
-    });
-    loadCFs();
-  }
+      window.exportIDsPDF = () => {
+        if (!lastData) return;
+        const byModule = groupByModule(lastData.tickets||[]);
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ unit:"pt", format:"a4" });
+        doc.setFontSize(14);
+        let first = true;
+        for (const [k, arr] of Object.entries(byModule)) {
+          if (!first) doc.addPage();
+          first = false;
+          doc.text(`IDs — ${k}`, 40, 40);
+          const body = arr.map(t => [t.id, t.subject||"", t.status||"", t.owner||"", fmtDateTime(t.createdDate), fmtDateTime(t.solvedDate||t.closedIn)]);
+          doc.autoTable({
+            startY:60,
+            head:[["ID","Assunto","Status","Responsável","Criação","Solução"]],
+            body,
+            styles:{ fontSize:8, cellPadding:3 }
+          });
+        }
+        doc.save(`ids-por-modulo_${(lastData.serviceFirstLevel||"servico")}.pdf`);
+      };
 
-  window.deleteCF = async (id)=>{
-    if(!confirm("Excluir este registro?")) return;
-    await fetch("/api/custom-fields/"+id,{method:"DELETE",credentials:"include"});
-    loadCFs();
-  }
-})();
-</script>
+      window.exportIDsDOCX = async () => {
+        if (!lastData) return;
+        const byModule = groupByModule(lastData.tickets||[]);
+        const { Document, Packer, Paragraph, Table, TableRow, TableCell, WidthType, TextRun } = window.docx;
+
+        const sections = [];
+        for (const [k, arr] of Object.entries(byModule)) {
+          const rows = [
+            new TableRow({
+              children:[
+                "ID","Assunto","Status","Responsável","Criação","Solução"
+              ].map(h => new TableCell({ children:[new Paragraph(String(h))] }))
+            }),
+            ...arr.map(t => new TableRow({
+              children:[
+                t.id, t.subject||"", t.status||"", t.owner||"", fmtDateTime(t.createdDate), fmtDateTime(t.solvedDate||t.closedIn)
+              ].map(v => new TableCell({ children:[new Paragraph(String(v))] }))
+            }))
+          ];
+          sections.push(
+            new Paragraph({ children:[ new TextRun({ text:`IDs — ${k}`, bold:true }) ] }),
+            new Table({ rows })
+          );
+        }
+
+        const doc = new Document({ sections:[{ children: sections }] });
+        const blob = await Packer.toBlob(doc);
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `ids-por-modulo_${(lastData.serviceFirstLevel||"servico")}.docx`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      };
+
+      // Detalhe rápido
+      window.verTicket = async function (ticketId) {
+        try {
+          const r = await fetch(`/api/ticket/${ticketId}`, { credentials: "include" });
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          const t = await r.json();
+          alert(
+            `🔎 Ticket #${t.id}\n\n` +
+            `Assunto: ${t.subject}\n` +
+            `Status: ${t.status}\n` +
+            `Responsável: ${t.owner}\n` +
+            `Equipe: ${t.ownerTeam}\n` +
+            `Solicitante: ${t.requester}\n` +
+            `Criado em: ${new Date(t.createdDate).toLocaleString("pt-BR")}`
+          );
+        } catch (e) { alert("Erro ao buscar detalhes: " + e.message); }
+      }
+    })();
+
+    // ===== Admin CustomFields =====
+    (async function () {
+      try {
+        const me = await fetch("/api/me", { credentials: "include" }).then(r => r.json());
+        if (me.role === "admin") {
+          document.getElementById("customFieldsAdmin").style.display = "";
+          loadCFs();
+        }
+      } catch {}
+
+      async function loadCFs() {
+        const tb = document.querySelector("#cfTable tbody");
+        tb.innerHTML = "<tr><td colspan=4>Carregando...</td></tr>";
+        const r = await fetch("/api/custom-fields", { credentials: "include" });
+        if (!r.ok) return;
+        const data = await r.json();
+        tb.innerHTML = data.map(cf => `
+          <tr>
+            <td>${cf.service}</td>
+            <td>${cf.customFieldId}</td>
+            <td>${cf.customFieldRuleId}</td>
+            <td><button class="btnExcluir" onclick="deleteCF(${cf.id})">Excluir</button></td>
+          </tr>
+        `).join("");
+      }
+
+      document.getElementById("btnAddCF").onclick = async () => {
+        const service = document.getElementById("cfService").value.trim();
+        const cfId = document.getElementById("cfId").value;
+        const cfRuleId = document.getElementById("cfRuleId").value;
+        if (!service || !cfId || !cfRuleId) { alert("Preencha todos os campos."); return; }
+        await fetch("/api/custom-fields", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ service, customFieldId: cfId, customFieldRuleId: cfRuleId })
+        });
+        loadCFs();
+      };
+
+      window.deleteCF = async (id) => {
+        if (!confirm("Excluir este registro?")) return;
+        await fetch("/api/custom-fields/" + id, { method: "DELETE", credentials: "include" });
+        loadCFs();
+      };
+    })();
+  </script>
 </body>
 </html>
