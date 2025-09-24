@@ -22,72 +22,6 @@ const db = await mysql.createPool({
   database: process.env.DB_NAME || "si_panel",
 });
 
-try {
-  // Preferências já existentes
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS user_card_colors (
-      user_id INT NOT NULL,
-      ticket_id VARCHAR(48) NOT NULL,
-      color CHAR(7) NOT NULL,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      PRIMARY KEY (user_id, ticket_id),
-      CONSTRAINT fk_user_card_colors_user FOREIGN KEY (user_id)
-        REFERENCES users(id) ON DELETE CASCADE
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-  `);
-
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS melhorias (
-      id INT UNSIGNED NOT NULL AUTO_INCREMENT,
-      titulo VARCHAR(150) NOT NULL,
-      descricao TEXT NOT NULL,
-      autor VARCHAR(120) NOT NULL,
-      status VARCHAR(40) NOT NULL DEFAULT 'Enviada',
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      PRIMARY KEY (id)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-  `);
-
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS user_ticket_orders (
-      user_id INT NOT NULL,
-      ticket_id VARCHAR(48) NOT NULL,
-      color CHAR(7) NOT NULL,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      PRIMARY KEY (user_id, ticket_id),
-      CONSTRAINT fk_user_card_colors_user FOREIGN KEY (user_id)
-        REFERENCES users(id) ON DELETE CASCADE
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-  `);
-
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS user_ticket_orders (
-      user_id INT NOT NULL,
-      column_key VARCHAR(32) NOT NULL,
-      ticket_order TEXT NOT NULL,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      PRIMARY KEY (user_id, column_key),
-      CONSTRAINT fk_user_ticket_orders_user FOREIGN KEY (user_id)
-        REFERENCES users(id) ON DELETE CASCADE
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-  `);
-
-  /* 🔹 Tabela que mapeia serviço => campo customizado a ser exibido no relatório */
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS service_custom_fields (
-      id INT UNSIGNED NOT NULL AUTO_INCREMENT,
-      service VARCHAR(150) NOT NULL UNIQUE,
-      customFieldId INT NOT NULL,
-      customFieldRuleId INT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      PRIMARY KEY (id)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-  `);
-} catch (err) {
-  console.error("Erro ao garantir tabelas de preferências:", err.message);
-}
 
 /* ---------------- Sessão ------------------- */
 app.use(session({
@@ -304,16 +238,58 @@ app.post("/login", async (req, res) => {
     req.session.team = user.team;
     req.session.role = user.role;
 
-    res.json({ success: true, message: "Login realizado com sucesso" });
+    const must = user.must_change_password === 1 || user.must_change_password === true;
+    res.json({ success: true, mustChangePassword: !!must, message: "Login realizado com sucesso" });
   } catch (err) {
     console.error("❌ Erro login:", err);
     res.status(500).json({ error: "Erro interno" });
   }
 });
 
-app.get("/dashboard", (req, res) => {
+app.get("/dashboard", async (req, res) => {
   if (!req.session.userId) return res.redirect("/");
+  try {
+    const [rows] = await db.query("SELECT must_change_password FROM users WHERE id = ?", [req.session.userId]);
+    if (rows.length && (rows[0].must_change_password === 1 || rows[0].must_change_password === true)) {
+      return res.redirect("/password");
+    }
+  } catch {}
   res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+// Página de troca de senha
+app.get("/password", (req, res) => {
+  if (!req.session.userId) return res.redirect("/");
+  res.sendFile(path.join(__dirname, "public", "password.html"));
+});
+
+// API: trocar senha (inclui primeiro login)
+app.post("/api/change-password", async (req, res) => {
+  if (!req.session.userId) return res.status(401).json({ error: "Não autenticado" });
+  const { currentPassword, newPassword } = req.body || {};
+  if (!newPassword || newPassword.length < 6) {
+    return res.status(400).json({ error: "Nova senha muito curta" });
+  }
+  try {
+    const [rows] = await db.query("SELECT id, password_hash, must_change_password FROM users WHERE id = ?", [req.session.userId]);
+    if (!rows.length) return res.status(404).json({ error: "Usuário não encontrado" });
+    const user = rows[0];
+    const must = user.must_change_password === 1 || user.must_change_password === true;
+    if (!must) {
+      if (!currentPassword) return res.status(400).json({ error: "Informe a senha atual" });
+      const ok = await bcrypt.compare(currentPassword, user.password_hash);
+      if (!ok) return res.status(401).json({ error: "Senha atual incorreta" });
+    }
+    const newHash = await bcrypt.hash(newPassword, 10);
+    await db.query(
+      "UPDATE users SET password_hash = ?, must_change_password = 0 WHERE id = ?",
+      [newHash, req.session.userId]
+    );
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("Erro ao trocar senha:", err);
+    return res.status(500).json({ error: "Erro ao trocar senha" });
+  }
 });
 
 app.get("/logout", (req, res) => {
@@ -515,6 +491,63 @@ app.post("/api/ticket-order", requireAuth, async (req, res) => {
 app.get("/admin/users", requireAdmin, async (req, res) => {
   const [rows] = await db.query("SELECT id, username, team, role FROM users");
   res.json(rows);
+});
+
+// Criação de usuário pelo Admin
+app.post("/admin/users/create", requireAdmin, async (req, res) => {
+  try {
+    const { username, password, team, role, mustChangePassword } = req.body || {};
+    if (!username || !password || !team || !role) {
+      return res.status(400).json({ error: "Campos obrigatórios ausentes" });
+    }
+    const [exists] = await db.query("SELECT id FROM users WHERE username = ? LIMIT 1", [username]);
+    if (exists.length) {
+      return res.status(409).json({ error: "Usuário já existe" });
+    }
+    const password_hash = await bcrypt.hash(password, 10);
+    const must = mustChangePassword ? 1 : 0;
+    await db.query(
+      "INSERT INTO users (username, password_hash, role, team, must_change_password) VALUES (?, ?, ?, ?, ?)",
+      [username, password_hash, role, team, must]
+    );
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("Erro ao criar usuário:", err);
+    return res.status(500).json({ error: "Erro ao criar usuário" });
+  }
+});
+
+// Atualização de usuário (equipe/role/must_change_password)
+app.post("/admin/users/update", requireAdmin, async (req, res) => {
+  try {
+    const { userId, team, role, mustChangePassword } = req.body || {};
+    if (!userId || !team || !role) {
+      return res.status(400).json({ error: "Campos obrigatórios ausentes" });
+    }
+    const must = typeof mustChangePassword === "boolean" ? (mustChangePassword ? 1 : 0) : undefined;
+    if (must === undefined) {
+      await db.query("UPDATE users SET team = ?, role = ? WHERE id = ?", [team, role, userId]);
+    } else {
+      await db.query("UPDATE users SET team = ?, role = ?, must_change_password = ? WHERE id = ?", [team, role, must, userId]);
+    }
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("Erro ao atualizar usuário:", err);
+    return res.status(500).json({ error: "Erro ao atualizar usuário" });
+  }
+});
+
+// Exclusão de usuário
+app.post("/admin/users/delete", requireAdmin, async (req, res) => {
+  try {
+    const { userId } = req.body || {};
+    if (!userId) return res.status(400).json({ error: "userId obrigatório" });
+    await db.query("DELETE FROM users WHERE id = ?", [userId]);
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("Erro ao excluir usuário:", err);
+    return res.status(500).json({ error: "Erro ao excluir usuário" });
+  }
 });
 
 /* ================== CUSTOM FIELDS ADMIN ================== */
@@ -838,3 +871,4 @@ app.post("/api/melhorias/sugerir", async (req, res) => {
 /* static files e start */
 app.use(express.static("public"));
 app.listen(PORT, () => console.log(`✅ Servidor rodando em http://localhost:${PORT}`));
+

@@ -1,0 +1,250 @@
+import express from "express";
+import axios from "axios";
+import dotenv from "dotenv";
+import session from "express-session";
+import bcrypt from "bcryptjs";
+import mysql from "mysql2/promise";
+import path from "path";
+import { fileURLToPath } from "url";
+import dns from "node:dns";
+
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+/* -------------------- DB -------------------- */
+const db = await mysql.createPool({
+  host: process.env.DB_HOST || "192.168.91.168",
+  port: process.env.DB_PORT || 5432, // MariaDB nessa porta
+  user: process.env.DB_USER || "root",
+  password: process.env.DB_PASS || "V!@soft2025#@2306",
+  database: process.env.DB_NAME || "si_panel",
+});
+
+try {
+  // Preferências já existentes
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS user_card_colors (
+      user_id INT NOT NULL,
+      ticket_id VARCHAR(48) NOT NULL,
+      color CHAR(7) NOT NULL,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (user_id, ticket_id),
+      CONSTRAINT fk_user_card_colors_user FOREIGN KEY (user_id)
+        REFERENCES users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
+
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS melhorias (
+      id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+      titulo VARCHAR(150) NOT NULL,
+      descricao TEXT NOT NULL,
+      autor VARCHAR(120) NOT NULL,
+      status VARCHAR(40) NOT NULL DEFAULT 'Enviada',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
+
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS user_ticket_orders (
+      user_id INT NOT NULL,
+      ticket_id VARCHAR(48) NOT NULL,
+      color CHAR(7) NOT NULL,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (user_id, ticket_id),
+      CONSTRAINT fk_user_card_colors_user FOREIGN KEY (user_id)
+        REFERENCES users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
+
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS user_ticket_orders (
+      user_id INT NOT NULL,
+      column_key VARCHAR(32) NOT NULL,
+      ticket_order TEXT NOT NULL,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (user_id, column_key),
+      CONSTRAINT fk_user_ticket_orders_user FOREIGN KEY (user_id)
+        REFERENCES users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
+
+  /* 🔹 Tabela que mapeia serviço => campo customizado a ser exibido no relatório */
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS service_custom_fields (
+      id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+      service VARCHAR(150) NOT NULL UNIQUE,
+      customFieldId INT NOT NULL,
+      customFieldRuleId INT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
+} catch (err) {
+  console.error("Erro ao garantir tabelas de preferências:", err.message);
+}
+
+/* ---------------- Sessão ------------------- */
+app.use(session({
+  secret: process.env.SESSION_SECRET || "segredo123",
+  resave: false,
+  saveUninitialized: false,
+}));
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+/* ------------------ Paths ------------------ */
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const HEX_COLOR_REGEX = /^#[0-9A-Fa-f]{6}$/;
+const VALID_ORDER_COLUMNS = new Set(["novos", "atendimento", "parados", "vencidos"]);
+
+/* ----------------- Login ------------------- */
+app.get("/", (req, res) => {
+  if (!req.session.userId) {
+    return res.sendFile(path.join(__dirname, "public/login.html"));
+  }
+  res.redirect("/dashboard");
+});
+
+/* ================== SERVICE TICKETS (RELATÓRIO) ================== */
+/* Busca SOMENTE por serviceFirstLevel e traz o valor do campo customizado configurado no BD */
+function requireAuth(req, res, next) {
+  if (!req.session.userId) return res.status(401).json({ error: "Não autenticado" });
+  next();
+}
+
+/* ================== ALTERADO AQUI ================== */
+/* ================== /api/service-tickets (ATUALIZADA) ================== */
+app.get("/api/service-tickets", requireAuth, async (req, res) => {
+  try {
+    const raw = (req.query.service || "").trim();
+    const { start, end, status } = req.query;
+    if (!raw) return res.status(400).json({ error: "Parâmetro service obrigatório" });
+
+    // considera apenas o 1º nível do caminho (ex.: "Agronegócio" de "Oracle Cloud » Agronegócio")
+    const [firstLevel] = raw.split("»").map(s => s.trim()).filter(Boolean);
+
+    // status agrupados:
+    // PENDENTE: tudo que NÃO é Closed/Resolved/Cancelled
+    // FINALIZADO: Closed OU Resolved
+    // CANCELADO:  Canceled/Cancelled
+    const statusFilter = (() => {
+      const s = String(status || "").toUpperCase();
+      if (s === "FINALIZADO") {
+        return "(baseStatus eq 'Closed' or baseStatus eq 'Resolved')";
+      }
+      if (s === "CANCELADO") {
+        return "(baseStatus eq 'Canceled' or baseStatus eq 'Cancelled')";
+      }
+      if (s === "PENDENTE") {
+        return "(baseStatus ne 'Closed' and baseStatus ne 'Resolved' and baseStatus ne 'Canceled' and baseStatus ne 'Cancelled')";
+      }
+      return ""; // (todos)
+    })();
+
+    // evita quebra de OData com aspas simples
+    const escapeOData = (v) => String(v).replace(/'/g, "''");
+
+    const parts = [];
+    if (firstLevel) parts.push(`serviceFull/any(s: s eq '${escapeOData(firstLevel)}')`);
+    if (start) parts.push(`createdDate ge ${start}T00:00:00.000Z`);
+    if (end)   parts.push(`createdDate le ${end}T23:59:59.999Z`);
+    if (statusFilter) parts.push(statusFilter);
+    const filter = parts.join(" and ");
+
+    // pedimos campos extras: owner, closedIn, slaSolutionDate e actions
+    const url =
+      `${MOVI_URL}?token=${MOVI_TOKEN}&$top=500` +
+      `&$select=id,subject,status,baseStatus,ownerTeam,createdDate,closedIn,slaSolutionDate,serviceFull` +
+      `&$expand=owner($select=id,businessName),customFieldValues($expand=items),actions` +
+      `&$filter=${encodeURIComponent(filter)}`;
+
+    const { data = [] } = await axios.get(url, { timeout: 15000 });
+
+    // Descobre qual customFieldId usar para este serviço (se houver cadastro)
+    let expectedFieldId = null;
+    try {
+      const [rows] = await db.query(
+        "SELECT customFieldId FROM service_custom_fields WHERE service = ? LIMIT 1",
+        [firstLevel]
+      );
+      if (rows.length) expectedFieldId = Number(rows[0].customFieldId);
+    } catch (e) {
+      console.warn("CF lookup falhou:", e.message);
+    }
+
+    // utilitário
+    const coalesce = (...vals) => {
+      for (const v of vals) {
+        if (v !== undefined && v !== null && String(v).trim() !== "") return v;
+      }
+      return null;
+    };
+
+    // tenta achar a data em que virou "Resolvido" nas ações
+    const getSolvedFromActions = (t) => {
+      const acts = Array.isArray(t.actions) ? t.actions : [];
+      // os objetos podem variar entre: action.status, action.toStatus, action.baseStatus
+      const isResolved = (a) => {
+        const cand = (a.status || a.toStatus || a.baseStatus || "").toString().toLowerCase();
+        return cand.includes("resolv"); // "Resolvido" / "Resolved"
+      };
+      const resolvedActs = acts.filter(isResolved).sort((a, b) => {
+        const da = new Date(a.createdDate).getTime() || 0;
+        const db = new Date(b.createdDate).getTime() || 0;
+        return da - db;
+      });
+      return resolvedActs.length ? resolvedActs[0].createdDate : null;
+    };
+
+    const tickets = data.map(t => {
+      // owner
+      const owner = t.owner?.businessName || "Não atribuído";
+
+      // previsão de solução (seu front já mostra)
+      let previsaoSolucao = null;
+      if (t.slaSolutionDate) {
+        const d = new Date(t.slaSolutionDate);
+        if (!isNaN(d)) previsaoSolucao = d.toISOString();
+      }
+
+      // data de solução final:
+      // 1) se tiver closedIn, usamos
+      // 2) senão, tenta pegar quando virou "Resolvido" nas ações
+      let solvedDate = t.closedIn || null;
+      if (!solvedDate) {
+        const fromActs = getSolvedFromActions(t);
+        if (fromActs) solvedDate = fromActs;
+      }
+
+      // extrai o "Módulo x Rotina"
+      let moduloRotina = null;
+      if (expectedFieldId) {
+        const match = (t.customFieldValues || []).find(cf => Number(cf.customFieldId) === expectedFieldId);
+        if (match) {
+          if (Array.isArray(match.items) && match.items.length > 0) {
+            moduloRotina = match.items.map(i => i.customFieldItem).filter(Boolean).join(", ");
+          } else {
+            moduloRotina = coalesce(match.customFieldItem, match.value, match.valueText, match.text);
+          }
+        }
+      } else {
+        const first = (t.customFieldValues || []).find(cf =>
+          coalesce(cf.customFieldItem, cf.value, cf.valueText, cf.text)
+        );
+        moduloRotina = first ? coalesce(first.customFieldItem, first.value, first.valueText, first.text) : null;
+      }
+
+      // serviceFirstLevel para o front (pega o 1º item do array serviceFull)
+      const serviceFirstLevel = Array.isArray(t.serviceFull) && t.serviceFull.length ? String(t.serviceFull[0]) : null;
+
+      return {
+        id: t.id,

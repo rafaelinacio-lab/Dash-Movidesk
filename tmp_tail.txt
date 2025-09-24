@@ -1,0 +1,250 @@
+    ...(Array.isArray(t.customFields) ? t.customFields : []),
+  ].map((cf) => ({
+    label: cf.label || cf.title || cf.name || cf.customField?.label || cf.customField?.title,
+    value: cf.value || cf.valueText || cf.text || cf.customFieldValue,
+  }));
+  const found = arr.find((cf) => cf.label && labels.some((L) => normalizeStr(cf.label).includes(normalizeStr(L))));
+  return found?.value || null;
+};
+
+const isClosedOrResolved = (t) => t.baseStatus === "Closed" || t.baseStatus === "Resolved";
+const isCanceled = (t) => {
+  if (t.baseStatus === "Canceled" || t.baseStatus === "Cancelled") return true;
+  const s = String(t.status || "").toLowerCase();
+  return s.includes("cancelad");
+};
+const isInactive = (t) => isClosedOrResolved(t) || isCanceled(t);
+
+const diffDays = (dateA, dateB) => Math.floor((dateA.getTime() - dateB.getTime()) / 86400000);
+const getDueInfo = (prevISO, inactive, todayLocalISO) => {
+  if (!prevISO) return { overdue: false, daysUntilDue: null, dueCategory: "none" };
+  const [Yd, Md, Dd] = prevISO.split("-").map(Number);
+  const [Yt, Mt, Dt] = todayLocalISO.split("-").map(Number);
+  const due = new Date(Yd, Md - 1, Dd);
+  const today = new Date(Yt, Mt - 1, Dt);
+  const days = diffDays(due, today);
+  const overdue = days < 0 && !inactive;
+  let dueCategory = "ok";
+  if (!inactive) {
+    if (overdue) dueCategory = "overdue";
+    else if (days <= 2) dueCategory = "warning";
+  }
+  return { overdue, daysUntilDue: days, dueCategory };
+};
+
+/* ============ Mock e Cache ============ */
+const makeMockPayload = () => {
+  const today = new Date();
+  const ymdToday = ymd(today);
+  const mk = (id, subj, baseStatus, status, urgency, owner="Não atribuído") => ({
+    id, subject: subj, urgency, baseStatus, status, owner,
+    ownerTeam: "Sustentação", createdDate: today.toISOString(),
+    previsaoSolucao: ymdToday, overdue: false, daysUntilDue: 2, dueCategory: "ok",
+    canceled: false, isNew: baseStatus==="New"
+  });
+  const tickets = [
+    mk(1001,"Inativação Movidesk - Cliente X","New","Novo","Crítica","Agente A"),
+    mk(1002,"Contexto - Ajuste de SLA","New","Novo","Alta","Agente B"),
+    mk(1003,"Erro na emissão","InAttendance","Em Atendimento","Média","Agente B"),
+    mk(1004,"Aguardando - Fornecedor","Stopped","Aguardando","Alta","Agente C"),
+  ];
+  const counts = {
+    Total: tickets.length,
+    New: tickets.filter(t=>t.baseStatus==="New").length,
+    InAttendance: tickets.filter(t=>t.baseStatus==="InAttendance").length,
+    Stopped: tickets.filter(t=>t.baseStatus==="Stopped").length,
+    Closed: 0,
+    Overdue: 0,
+    MonthOpenedAll: tickets.length,
+  };
+  counts.OpenTickets = counts.New + counts.InAttendance + counts.Stopped;
+  const countsPerUrgency = {};
+  const countsPerOwner = {};
+  tickets.forEach(t=>{
+    countsPerUrgency[t.urgency] = (countsPerUrgency[t.urgency]||0)+1;
+    countsPerOwner[t.owner] = (countsPerOwner[t.owner]||0)+1;
+  });
+  return { counts, countsPerUrgency, countsPerOwner, tickets };
+};
+
+let lastGoodPayload = null;
+
+/* endpoint tickets (kanban) – mantido igual ao seu atual */
+app.get("/api/tickets", async (req, res) => {
+  try {
+    if (!MOVI_TOKEN) {
+      const base = makeMockPayload();
+      const ownerQ = (req.query.owner || "").toString();
+      if (!ownerQ) return res.json(base);
+      const norm = (s)=> (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+      const filteredTickets = (base.tickets||[]).filter(t => norm(t.owner||'') === norm(ownerQ));
+      const hoje = new Date(); const mesAtual = hoje.getMonth(); const anoAtual = hoje.getFullYear();
+      const ticketsMes = filteredTickets.filter(t=>{ if(!t.createdDate) return false; const d=new Date(t.createdDate); return d.getMonth()===mesAtual && d.getFullYear()===anoAtual; });
+      const counts = {
+        Total: filteredTickets.filter(t=>!t.canceled).length,
+        New: filteredTickets.filter(t=>t.baseStatus==='New' && !t.canceled).length,
+        InAttendance: filteredTickets.filter(t=>t.baseStatus==='InAttendance' && !t.canceled).length,
+        Stopped: filteredTickets.filter(t=>t.baseStatus==='Stopped' && !t.canceled).length,
+        Closed: filteredTickets.filter(t=> (t.baseStatus==='Closed'||t.baseStatus==='Resolved') && !t.canceled).length,
+        Overdue: filteredTickets.filter(t=>t.overdue && !t.canceled).length,
+        MonthOpenedAll: ticketsMes.length,
+      };
+      counts.OpenTickets = counts.New + counts.InAttendance + counts.Stopped;
+      const countsPerUrgency = {}; const countsPerOwner = {};
+      filteredTickets.forEach(t=>{ countsPerUrgency[t.urgency]=(countsPerUrgency[t.urgency]||0)+1; countsPerOwner[t.owner]=(countsPerOwner[t.owner]||0)+1; });
+      return res.json({ counts, countsPerUrgency, countsPerOwner, tickets: filteredTickets });
+    }
+
+    const userTeam = req.session.team;
+    if (!userTeam) {
+      return res.json({ counts:{}, countsPerUrgency:{}, countsPerOwner:{}, tickets:[] });
+    }
+
+    const todayLocalISO = ymd(new Date());
+
+    // Busca apenas tickets ativos: New, InAttendance, Stopped
+    let filter = `ownerTeam eq '${userTeam}' and (baseStatus eq 'New' or baseStatus eq 'InAttendance' or baseStatus eq 'Stopped')`;
+
+    const url =
+      `${MOVI_URL}?token=${MOVI_TOKEN}&$top=500`
+      + `&$select=id,subject,urgency,baseStatus,status,ownerTeam,createdDate,closedIn,slaSolutionDate,serviceFull`
+      + `&$expand=owner($select=id,businessName),customFieldValues`
+      + `&$filter=${encodeURIComponent(filter)}`;
+
+    const { data } = await axios.get(url, { timeout: 15000 });
+
+    const tickets = data.map((t) => {
+      let prevISO = null;
+      if (t.slaSolutionDate) {
+        const d = new Date(t.slaSolutionDate);
+        if (!isNaN(d)) prevISO = ymd(d);
+      }
+      if (!prevISO) {
+        const forecastRaw = getForecastRaw(t);
+        const forecastDate = parseAnyDate(forecastRaw);
+        prevISO = forecastDate ? ymd(forecastDate) : null;
+      }
+      const inactive = isInactive(t);
+      const { overdue, daysUntilDue, dueCategory } = getDueInfo(prevISO, inactive, todayLocalISO);
+      return {
+        id: t.id,
+        subject: t.subject,
+        urgency: t.urgency || "Não definida",
+        baseStatus: t.baseStatus,
+        status: t.status || "Não definido",
+        owner: t.owner?.businessName || "Não atribuído",
+        ownerTeam: t.ownerTeam || "Não definido",
+        createdDate: t.createdDate,
+        previsaoSolucao: prevISO,
+        overdue,
+        daysUntilDue,
+        dueCategory,
+        canceled: isCanceled(t),
+        serviceFull: t.serviceFull || [],
+      };
+    });
+
+    console.log("Tickets retornados:");
+    tickets.forEach(t => {
+      console.log(`#${t.id} | baseStatus: ${t.baseStatus} | status: ${t.status} | canceled: ${t.canceled}`);
+    });
+
+    const ownerQ = (req.query.owner || "").toString();
+    const norm = (s)=> (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+    let effTickets = tickets;
+    if (ownerQ) {
+      const target = norm(ownerQ);
+      effTickets = tickets.filter(t => norm(t.owner||'') === target);
+    }
+
+    const hoje = new Date();
+    const mesAtual = hoje.getMonth();
+    const anoAtual = hoje.getFullYear();
+    const ticketsMes = effTickets.filter(t => {
+      if (!t.createdDate) return false;
+      const d = new Date(t.createdDate);
+      return d.getMonth() === mesAtual && d.getFullYear() === anoAtual;
+    });
+
+    const counts = {
+      Total: effTickets.filter((t) => !t.canceled).length,
+      New: effTickets.filter((t) => t.baseStatus === "New" && !t.canceled).length,
+      InAttendance: effTickets.filter((t) => t.baseStatus === "InAttendance" && !t.canceled).length,
+      Stopped: effTickets.filter((t) => t.baseStatus === "Stopped" && !t.canceled).length,
+      Closed: effTickets.filter((t) => isClosedOrResolved(t) && !t.canceled).length,
+      Overdue: effTickets.filter((t) => t.overdue && !t.canceled).length,
+      MonthOpenedAll: ticketsMes.length,
+    };
+    counts.OpenTickets = counts.New + counts.InAttendance + counts.Stopped;
+
+    const countsPerUrgency = {};
+    const countsPerOwner = {};
+    effTickets.forEach((t) => {
+      if (isInactive(t)) return;
+      countsPerUrgency[t.urgency] = (countsPerUrgency[t.urgency] || 0) + 1;
+      countsPerOwner[t.owner] = (countsPerOwner[t.owner] || 0) + 1;
+    });
+
+    lastGoodPayload = { counts, countsPerUrgency, countsPerOwner, tickets: effTickets };
+    res.json(lastGoodPayload);
+  } catch (err) {
+    console.error("❌ Erro ao buscar tickets:", err.message);
+    if (lastGoodPayload) {
+      console.warn("⚠ Sem conexão. Enviando último payload válido.");
+      return res.json(lastGoodPayload);
+    }
+    return res.json(makeMockPayload());
+  }
+});
+
+/* Rotas melhorias */
+app.get("/api/melhorias", async (req, res) => {
+  try {
+    const [rows] = await db.query("SELECT id, titulo, descricao, autor, status, created_at FROM melhorias ORDER BY created_at DESC");
+    const melhorias = rows.map((row) => ({
+      id: row.id,
+      titulo: row.titulo,
+      descricao: row.descricao,
+      autor: row.autor,
+      status: row.status || 'Enviada',
+      data: row.created_at ? new Date(row.created_at).toISOString() : null,
+    }));
+    res.json(melhorias);
+  } catch (err) {
+    console.error('Erro ao carregar melhorias:', err);
+    res.status(500).json({ error: 'Erro ao carregar melhorias' });
+  }
+});
+
+app.post("/api/melhorias/status", async (req, res) => {
+  const { id, status } = req.body;
+  if (!id || !status) return res.status(400).json({ error: 'Dados obrigatórios' });
+  try {
+    const [result] = await db.query("UPDATE melhorias SET status = ?, updated_at = NOW() WHERE id = ?", [status, id]);
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Melhoria não encontrada' });
+    }
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Erro ao atualizar melhoria:', err);
+    res.status(500).json({ error: 'Erro ao atualizar melhoria' });
+  }
+});
+
+app.post("/api/melhorias/sugerir", async (req, res) => {
+  const { titulo, descricao, autor } = req.body;
+  if (!titulo || !descricao || !autor) {
+    return res.status(400).json({ error: 'Campos obrigatórios ausentes' });
+  }
+  try {
+    const [result] = await db.query("INSERT INTO melhorias (titulo, descricao, autor) VALUES (?, ?, ?)", [titulo, descricao, autor]);
+    res.json({ success: true, id: result.insertId });
+  } catch (err) {
+    console.error('Erro ao salvar melhoria:', err);
+    res.status(500).json({ error: 'Erro ao salvar melhoria' });
+  }
+});
+
+/* static files e start */
+app.use(express.static("public"));
+app.listen(PORT, () => console.log(`✅ Servidor rodando em http://localhost:${PORT}`));
