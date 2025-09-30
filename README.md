@@ -1,5 +1,3 @@
-Com certeza\! Baseado nos arquivos que você enviou, aqui está uma documentação completa e bem estruturada para o seu projeto Dash-Movidesk, pronta para ser usada no GitHub.
-
 # Documentação do Projeto Dash-Movidesk
 
 ## Visão Geral do Projeto
