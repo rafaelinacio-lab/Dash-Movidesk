@@ -1,438 +1,1051 @@
-<!DOCTYPE html>
-<html lang="pt-br">
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <title>Relatórios - Dash Movidesk</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- ▼ libs de export -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
-  <!-- ▲ -->
-  <link href="style.css" rel="stylesheet" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    #teamSelect { max-width: 520px; }
-    @media print { header,.adminForm,.appFooter,.acoes,hr { display:none!important } #printArea{display:block!important} }
-    #printArea{display:none}
-    .error{color:#ef4444;font-weight:700}
-    .filters{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}
-    .filters>div label{display:block;font-weight:600;margin-bottom:6px}
-    .pill{padding:.15rem .5rem;border-radius:999px;background:#1118270d;font-size:.8rem}
-    .exportBar{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
-  </style>
-  <script>function toggleTheme(){document.body.classList.toggle('dark');}</script>
+    <meta charset="UTF-8" />
+    <title>Relatórios - Dash Movidesk</title>
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css"/>
+    <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
+    
+    <link href="style.css" rel="stylesheet" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        :root {
+            --app-gradient-start: #6fa0ff;
+            --app-gradient-mid: #4f86ff;
+            --app-gradient-end: #63d0ff;
+        }
+
+        #teamSelect { max-width: 520px; }
+        @media print { header, .adminForm, .appFooter, .acoes, hr { display: none !important; } #printArea { display: block !important; } }
+        #printArea { display: none; }
+        .error { color: #ef4444; font-weight: 700; }
+
+        .search-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #dbeafe;
+            margin: 0 0 24px 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .search-title i {
+            font-size: 22px;
+            color: #60a5fa;
+        }
+
+        /* ===== Estilo refinado dos filtros ===== */
+        .filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px 16px; /* Mais espaço vertical */
+            align-items: flex-end; /* Alinha o botão com a base dos inputs */
+        }
+
+        .filters > div {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1; /* Permite que os campos cresçam */
+            min-width: 180px; /* Largura mínima para evitar quebra excessiva */
+        }
+
+        .filters label {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #d1d5db; /* Cor ajustada para o tema escuro padrão */
+        }
+        
+        body:not(.dark) .filters label {
+             color: #374151; /* Cor para o tema claro */
+        }
+
+        .filters input,
+        .filters select:not(.choices__input) {
+            padding: 10px 14px;
+            border-radius: 10px;
+            border: 1.5px solid #d1d5db;
+            background: #fff;
+            font-size: 14px;
+            color: #111827;
+            transition: all 0.25s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            min-height: 44px; /* Altura padrão */
+        }
+
+        .filters input:focus,
+        .filters select:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
+            outline: none;
+        }
+
+        body.dark .filters input,
+        body.dark .filters select:not(.choices__input) {
+            background: #1f2937;
+            border-color: #374151;
+            color: #f9fafb;
+        }
+
+        body.dark .filters input:focus,
+        body.dark .filters select:focus {
+            border-color: #60a5fa;
+            box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.3);
+        }
+
+        /* Botão Pesquisar */
+        #btnSearchService {
+            padding: 10px 24px;
+            border-radius: 10px;
+            border: none;
+            font-size: 15px;
+            font-weight: 600;
+            background: linear-gradient(90deg, #2563eb, #3b82f6);
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+            height: 44px; /* Mesma altura dos inputs */
+        }
+
+        #btnSearchService:hover {
+            background: linear-gradient(90deg, #1d4ed8, #2563eb);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(37, 99, 235, 0.35);
+        }
+        
+        #btnSearchService:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+        }
+
+        .pill { padding: .15rem .5rem; border-radius: 999px; background: #1118270d; font-size: .8rem; }
+        .exportBar { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0 8px 0; align-items: center; border-top: 1px solid #e5e7eb; padding-top: 16px; }
+        body.dark .exportBar { border-top-color: #374151; }
+        body.dark .pill { background: #ffffff1a; }
+        
+        .kpi-container { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 24px; }
+        .kpi-card { background-color: #f9fafb; padding: 16px; border-radius: 8px; border: 1px solid #e5e7eb; flex-grow: 1; text-align: center; }
+        .kpi-card h3 { margin: 0 0 8px; font-size: 1rem; color: #6b7280; font-weight: 600; }
+        .kpi-card p { margin: 0; font-size: 2.25rem; font-weight: 700; color: #111827; }
+        body.dark .kpi-card { background-color: #1f2937; border-color: #374151; }
+        body.dark .kpi-card h3 { color: #9ca3af; }
+        body.dark .kpi-card p { color: #f9fafb; }
+
+        /* ===== Choices.js Custom Styles ===== */
+        .choices {
+            margin-bottom: 0;
+            width: 100%;
+        }
+
+        .choices__inner {
+            background-color: #fff;
+            border: 1.5px solid #d1d5db;
+            border-radius: 10px;
+            padding: 5px 10px;
+            font-size: 14px;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.25s ease;
+        }
+
+        .is-focused .choices__inner {
+            border-color: #2563eb !important;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25) !important;
+        }
+
+        .choices__list--multiple .choices__item {
+            background: #2563eb;
+            border: none;
+            color: #fff;
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 13px;
+            font-weight: 600;
+            margin: 0;
+            box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+        }
+        
+        .choices__list--multiple .choices__item .choices__button {
+            border-left: 1px solid rgba(255, 255, 255, 0.3);
+            margin-left: 8px;
+            padding-left: 8px;
+            opacity: 0.8;
+        }
+
+        .choices__list--dropdown {
+            background: #fff;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 6px 14px rgba(0,0,0,0.12);
+            padding: 6px 0;
+            margin-top: 8px;
+            z-index: 10;
+        }
+
+        .choices__list--dropdown .choices__item--selectable.is-highlighted {
+            background: #f1f5f9;
+            color: #111827;
+        }
+
+        .choices__placeholder {
+            color: #9ca3af;
+        }
+
+        /* Estilos para o tema escuro do Choices.js */
+        body.dark .choices__inner {
+            background-color: #1f2937;
+            border-color: #374151;
+            color: #f9fafb;
+        }
+        
+        body.dark .is-focused .choices__inner {
+            border-color: #60a5fa !important;
+            box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.35) !important;
+        }
+        
+        body.dark .choices__list--multiple .choices__item {
+             background: #3b82f6;
+             box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
+        }
+
+        body.dark .choices__list--dropdown {
+            background-color: #1f2937;
+            border-color: #374151;
+            box-shadow: 0 6px 14px rgba(0,0,0,0.2);
+        }
+
+        body.dark .choices__list--dropdown .choices__item--selectable.is-highlighted {
+            background: #374151;
+            color: #f9fafb;
+        }
+
+    </style>
+    <script>
+        // Função simples para alternar o tema, pode ser colocada aqui para evitar um arquivo extra
+        function toggleTheme() {
+            document.body.classList.toggle('dark');
+        }
+    </script>
 </head>
-<body>
-  <div class="container">
-    <header>
-      <h1 class="brandTitle">
-        <img src="/logo-viasoft.png" alt="Viasoft" class="headerLogo" />
-        Relatórios <span>Movidesk</span>
-      </h1>
-      <div class="acoes">
-        <button onclick="toggleTheme()" class="btnGhost sm" title="Tema">🌙 Tema</button>
-        <a href="/dashboard" class="btnGhost sm" title="Voltar">🔙 Voltar</a>
-        <a href="/logout" id="logoutBtn" class="btnGhost sm danger" title="Sair">🚪 Sair</a>
-      </div>
-    </header>
+<body class="dark"> <div class="container">
+        <header>
+            <h1 class="brandTitle">
+                <img src="/logo-viasoft.png" alt="Viasoft" class="headerLogo" />
+                Relatórios <span>Movidesk</span>
+            </h1>
+            <div class="acoes">
+                <button onclick="toggleTheme()" class="btnGhost sm" title="Tema">
+                    <span class="icon">🌙</span> <span class="label">Alternar Tema</span>
+                </button>
+                <a href="/dashboard" class="btnGhost sm" title="Voltar">
+                     <span class="icon">🔙</span> <span class="label">Voltar</span>
+                </a>
+                <a href="/logout" id="logoutBtn" class="btnGhost sm danger" title="Sair">
+                    <span class="icon">🚪</span> <span class="label">Sair</span>
+                </a>
+            </div>
+        </header>
 
-    <section class="adminSection">
-      <h2>🔍 Pesquisa de Tickets por Serviço</h2>
-      <div class="adminForm filters" style="margin:8px 0 12px;">
-        <div>
-          <label>Serviço (serviceFirstLevel)</label>
-          <input list="serviceOptions" id="serviceSearchInput" style="min-width:300px" placeholder="Selecione um serviço">
-          <datalist id="serviceOptions">
-            <option value="Agronegócio">
-            <option value="Construshow">
-            <option value="Agrotitan Fazendas">
-            <option value="Analytics - B.I">
-            <option value="CRM">
-            <option value="Supermercados">
-            <option value="Voors">
-          </datalist>
-        </div>
-        <div><label>Período • De</label><input type="date" id="serviceDateStart"></div>
-        <div><label>Período • Até</label><input type="date" id="serviceDateEnd"></div>
-        <div>
-          <label>Status</label>
-          <select id="statusFilter" style="min-width:180px">
-            <option value="">(Todos)</option>
-            <option value="PENDENTE">Pendente</option>
-            <option value="FINALIZADO">Finalizado</option>
-            <option value="CANCELADO">Cancelado</option>
-          </select>
-        </div>
-        <div><button id="btnSearchService" class="btnSalvar">Pesquisar</button></div>
-      </div>
-      <div id="serviceSearchResults"></div>
-    </section>
+        <section class="adminSection">
+             <h2 class="search-title">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                Pesquisa de Tickets por Serviço
+            </h2>
+            
+            <form class="filters">
+                <div class="serviceSearch">
+                    <label for="serviceSearchInput">Serviço (serviceFirstLevel)</label>
+                    <div class="serviceSearchControl">
+                        <input list="serviceOptions" id="serviceSearchInput" class="serviceSearchInput" placeholder="Selecione ou digite um serviço">
+                    </div>
+                    <datalist id="serviceOptions"></datalist>
+                </div>
 
-    <hr style="margin:24px 0;">
-    <section id="customFieldsAdmin" class="adminSection" style="display:none;">
-      <h2>⚙️ Custom Fields por Serviço</h2>
-      <div class="adminForm">
-        <input type="text" id="cfService" placeholder="Serviço (ex: Agronegócio)" />
-        <input type="number" id="cfId" placeholder="Campo (customFieldId)" />
-        <input type="number" id="cfRuleId" placeholder="Regra de Exibição (customFieldRuleId)" />
-        <button id="btnAddCF" class="btnSalvar">Salvar</button>
-      </div>
-      <table class="adminTable" id="cfTable">
-        <thead><tr><th>SERVIÇO</th><th>CUSTOMFIELDID</th><th>CUSTOMFIELDRULEID</th><th>AÇÃO</th></tr></thead>
-        <tbody></tbody>
-      </table>
-    </section>
-  </div>
-
-  <div class="appFooter">Desenvolvido para Viasoft © 2025</div>
-
-  <script>
-    (function () {
-      const btn = document.getElementById("btnSearchService");
-      const input = document.getElementById("serviceSearchInput");
-      const out = document.getElementById("serviceSearchResults");
-      const dateStart = document.getElementById("serviceDateStart");
-      const dateEnd = document.getElementById("serviceDateEnd");
-      const statusSel = document.getElementById("statusFilter");
-
-      let lastData = null;   // guardamos para exportações
-
-      const fmtDateTime = (v) => {
-        if (!v) return "-";
-        const d = new Date(v);
-        return isNaN(d) ? "-" : d.toLocaleString("pt-BR");
-      };
-
-      btn.addEventListener("click", runSearch);
-      input.addEventListener("keyup", (e) => { if (e.key === "Enter") runSearch(); });
-      statusSel.addEventListener("change", runSearch);
-
-      async function runSearch(){
-        const service = input.value.trim();
-        if (!service) { alert("Informe o serviço."); return; }
-        out.innerHTML = "<p>Pesquisando...</p>";
-
-        const qs = new URLSearchParams({ service });
-        if (dateStart.value) qs.set("start", dateStart.value);
-        if (dateEnd.value) qs.set("end", dateEnd.value);
-        if (statusSel.value) qs.set("status", statusSel.value);
-
-        try {
-          const r = await fetch(`/api/service-tickets?${qs.toString()}`, { credentials: "include" });
-          if (!r.ok) throw new Error("HTTP " + r.status);
-          const data = await r.json();
-          lastData = data;
-
-          // agrupamento para o gráfico/lista
-          const byModule = groupByModule(data.tickets || []);
-          const labels = Object.keys(byModule);
-          const values = labels.map(k => byModule[k].length);
-
-          out.innerHTML = `
-            <div class="graficoCard">
-              <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
                 <div>
-                  <h3>Tickets — ${data.serviceFirstLevel || data.service}</h3>
-                  <span class="pill">Total: ${data.counts.total}</span>
+                    <label for="customFieldSourceSelect">Exibir Colunas Adicionais</label>
+                    <select id="customFieldSourceSelect" multiple>
+                        <option value="servico">Módulo/Rotina (Serviço)</option>
+                        <option value="causa">Causa</option>
+                    </select>
                 </div>
-                <div class="exportBar">
-                  <button class="btnGhost sm" onclick="exportModulesPDF()">📄 PDF</button>
-                  <button class="btnGhost sm" onclick="exportModulesXLSX()">📊 XLSX</button>
-                  <button class="btnGhost sm" onclick="exportModulesDOCX()">📝 DOCX</button>
-                  <span class="pill">Detalhe (IDs):</span>
-                  <button class="btnGhost sm" onclick="exportIDsPDF()">📄 PDF (IDs)</button>
-                  <button class="btnGhost sm" onclick="exportIDsXLSX()">📊 XLSX (IDs)</button>
-                  <button class="btnGhost sm" onclick="exportIDsDOCX()">📝 DOCX (IDs)</button>
+                
+                <div>
+                    <label for="serviceDateStart">Período • De</label>
+                    <input type="date" id="serviceDateStart">
                 </div>
-              </div>
-              <canvas id="serviceChart" height="220"></canvas>
-            </div>
-            <div style="margin-top:16px;">
-              <h3 style="text-align:center;margin:8px 0;">Resumo — Módulo x Rotina</h3>
-              ${renderModuleTable(byModule)}
-            </div>
-            <div id="serviceTicketsTable" style="margin-top:16px;"></div>
-          `;
 
-          // gráfico (ranking horizontal)
-          const ctx = document.getElementById("serviceChart").getContext("2d");
-          new Chart(ctx, {
-            type: "bar",
-            data: {
-              labels,
-              datasets: [{ data: values }]
-            },
-            options: {
-              indexAxis: 'y',
-              responsive: true,
-              plugins: { legend: { display:false } },
-              scales: { x: { beginAtZero: true, ticks: { precision:0 } } }
-            }
-          });
+                <div>
+                    <label for="serviceDateEnd">Período • Até</label>
+                    <input type="date" id="serviceDateEnd">
+                </div>
+                
+                <div>
+                    <label for="statusFilter">Status</label>
+                    <select id="statusFilter">
+                        <option value="">(Todos)</option>
+                        <option value="PENDENTE">Pendente</option>
+                        <option value="FINALIZADO">Finalizado</option>
+                        <option value="CANCELADO">Cancelado</option>
+                    </select>
+                </div>
 
-          // tabela de tickets
-          const rows = (data.tickets || []).map(t => `
-            <tr>
-              <td>${t.id}</td>
-              <td>${t.subject || "-"}</td>
-              <td>${t.status || "-"}</td>
-              <td>${t.owner || "Não atribuído"}</td>
-              <td>${fmtDateTime(t.createdDate)}</td>
-              <td>${fmtDateTime(t.solvedDate || t.closedIn)}</td>
-              <td>${fmtDateTime(t.previsaoSolucao)}</td>
-              <td>${t.serviceFirstLevel || "-"}</td>
-              <td>${t.customFieldValue || "-"}</td>
-              <td><button class="btnGhost sm" onclick="verTicket(${t.id})">🔍 Ver</button></td>
-            </tr>
-          `).join("");
+                <div>
+                    <label for="classificationFilter">Classificação de Ticket</label>
+                    <select id="classificationFilter">
+                        <option value="">(Todas)</option>
+                    </select>
+                </div>
 
-          document.getElementById("serviceTicketsTable").innerHTML = `
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-              <h4 style="margin:0">Tickets encontrados</h4>
-              ${statusSel.value ? `<span class="pill">Status: ${statusSel.value}</span>` : ""}
+                <div>
+                    <label for="teamFilter">Equipe</label>
+                    <select id="teamFilter">
+                         <option value="">(Todas)</option>
+                         <option value="Administradores">Administradores</option>
+                         <option value="Agente">Agente</option>
+                         <option value="Agrotitan - Equipe Consultores">Agrotitan - Equipe Consultores</option>
+                         <option value="Agrotitan - Equipe Técnica">Agrotitan - Equipe Técnica</option>
+                         <option value="Agrotitan - Suporte">Agrotitan - Suporte</option>
+                         <option value="Agrotitan - Suporte Franquias">Agrotitan - Suporte Franquias</option>
+                         <option value="Agrotitan Fazendas - Equipe Técnica">Agrotitan Fazendas - Equipe Técnica</option>
+                         <option value="Agrotitan Fazendas - Suporte">Agrotitan Fazendas - Suporte</option>
+                         <option value="Analytics - B.I">Analytics - B.I</option>
+                         <option value="Analytics - B.I - Suporte">Analytics - B.I - Suporte</option>
+                         <option value="Assessoria Produto">Assessoria Produto</option>
+                         <option value="Aut. Comercial - Líderes">Aut. Comercial - Líderes</option>
+                         <option value="Aut. Comercial - Suporte">Aut. Comercial - Suporte</option>
+                         <option value="Aut. Comercial - Suporte Consultores">Aut. Comercial - Suporte Consultores</option>
+                         <option value="Automação Comercial - Equipe Técnica">Automação Comercial - Equipe Técnica</option>
+                         <option value="Clientes">Clientes</option>
+                         <option value="Comercial">Comercial</option>
+                         <option value="Conselho Diretor">Conselho Diretor</option>
+                         <option value="Construshow - Equipe Técnica">Construshow - Equipe Técnica</option>
+                         <option value="Construshow - Líderes">Construshow - Líderes</option>
+                         <option value="Construshow - Suporte">Construshow - Suporte</option>
+                         <option value="Construshow - Suporte Franquias">Construshow - Suporte Franquias</option>
+                         <option value="CRM - Equipe Técnica">CRM - Equipe Técnica</option>
+                         <option value="CRM - Suporte">CRM - Suporte</option>
+                         <option value="CRM - VX">CRM - VX</option>
+                         <option value="Financeiro - VIASOFT">Financeiro - VIASOFT</option>
+                         <option value="FRANQUIA - AD TECH NEGOCIOS LTDA">FRANQUIA - AD TECH NEGOCIOS LTDA</option>
+                         <option value="FRANQUIA - Borges e Mazete - Suporte">FRANQUIA - Borges e Mazete - Suporte</option>
+                         <option value="FRANQUIA - Cands - Suporte">FRANQUIA - Cands - Suporte</option>
+                         <option value="FRANQUIA - GO UP - Suporte">FRANQUIA - GO UP - Suporte</option>
+                         <option value="FRANQUIA - Link - Suporte">FRANQUIA - Link - Suporte</option>
+                         <option value="FRANQUIA - LZ - Suporte">FRANQUIA - LZ - Suporte</option>
+                         <option value="FRANQUIA - MN Agrobusiness">FRANQUIA - MN Agrobusiness</option>
+                         <option value="FRANQUIA - MP AGROTECH - Suporte">FRANQUIA - MP AGROTECH - Suporte</option>
+                         <option value="FRANQUIA - PRODACON - Consultores">FRANQUIA - PRODACON - Consultores</option>
+                         <option value="FRANQUIA - PRODACON - Suporte">FRANQUIA - PRODACON - Suporte</option>
+                         <option value="GCC - Gestão de Combate ao Churn">GCC - Gestão de Combate ao Churn</option>
+                         <option value="Ifact">Ifact</option>
+                         <option value="Nimitz - Lideres">Nimitz - Lideres</option>
+                         <option value="Nimitz - Suporte">Nimitz - Suporte</option>
+                         <option value="Nimitz - VX">Nimitz - VX</option>
+                         <option value="Ouvidoria">Ouvidoria</option>
+                         <option value="Petroshow - Equipe Técnica">Petroshow - Equipe Técnica</option>
+                         <option value="Petroshow - Líderes">Petroshow - Líderes</option>
+                         <option value="Petroshow - Suporte">Petroshow - Suporte</option>
+                         <option value="Serviços Fiscais - Equipe Técnica">Serviços Fiscais - Equipe Técnica</option>
+                         <option value="Serviços Fiscais - Suporte">Serviços Fiscais - Suporte</option>
+                         <option value="Serviços Fiscais - Suporte Franquias">Serviços Fiscais - Suporte Franquias</option>
+                         <option value="TalentRH - Equipe Técnica">TalentRH - Equipe Técnica</option>
+                         <option value="TalentRH - Líderes">TalentRH - Líderes</option>
+                         <option value="TalentRH - Suporte">TalentRH - Suporte</option>
+                         <option value="TalentRH - Suporte Franquias">TalentRH - Suporte Franquias</option>
+                         <option value="VIABOT">VIABOT</option>
+                         <option value="VIABOT - Adm">VIABOT - Adm</option>
+                         <option value="VIASOFT - Canais">VIASOFT - Canais</option>
+                         <option value="VIASOFT - Comitê de IA">VIASOFT - Comitê de IA</option>
+                         <option value="VIASOFT - Controladoria">VIASOFT - Controladoria</option>
+                         <option value="VIASOFT - Facilities">VIASOFT - Facilities</option>
+                         <option value="VIASOFT - FinOps">VIASOFT - FinOps</option>
+                         <option value="VIASOFT - HOK">VIASOFT - HOK</option>
+                         <option value="VIASOFT - HOK LMS">VIASOFT - HOK LMS</option>
+                         <option value="VIASOFT - Melhorias Personalizadas">VIASOFT - Melhorias Personalizadas</option>
+                         <option value="VIASOFT - Migrações">VIASOFT - Migrações</option>
+                         <option value="VIASOFT - Sistemas Internos">VIASOFT - Sistemas Internos</option>
+                         <option value="VIASOFT - Suporte Oracle Cloud">VIASOFT - Suporte Oracle Cloud</option>
+                         <option value="VIASOFT - Support Leaders">VIASOFT - Support Leaders</option>
+                         <option value="VIASOFT - Tecnologia">VIASOFT - Tecnologia</option>
+                         <option value="Viasuper - Equipe Técnica">Viasuper - Equipe Técnica</option>
+                         <option value="Viasuper - Líderes">Viasuper - Líderes</option>
+                         <option value="Viasuper - Suporte">Viasuper - Suporte</option>
+                         <option value="VOORS - Equipe Técnica">VOORS - Equipe Técnica</option>
+                         <option value="VOORS - Suporte">VOORS - Suporte</option>
+                         <option value="VOORS - VX">VOORS - VX</option>
+                         <option value="VX - AGROTITAN">VX - AGROTITAN</option>
+                         <option value="VX - AGROTITAN FAZENDAS">VX - AGROTITAN FAZENDAS</option>
+                         <option value="VX - CONSTRUSHOW">VX - CONSTRUSHOW</option>
+                         <option value="VX - PETROSHOW">VX - PETROSHOW</option>
+                    </select>
+                </div>
+                
+                <button type="button" id="btnSearchService">Pesquisar</button>
+            </form>
+            <div id="serviceSearchResults" style="margin-top: 24px;"></div>
+        </section>
+
+        <hr style="margin:24px 0;">
+        
+        <section id="customFieldsAdmin" class="adminSection" style="display:none;">
+            <h2>⚙️ Custom Fields por Serviço</h2>
+            <div class="adminForm">
+                <input type="text" id="cfService" placeholder="Serviço (ex: Agronegócio)" />
+                <input type="number" id="cfId" placeholder="Campo (customFieldId)" />
+                <input type="number" id="cfRuleId" placeholder="Regra de Exibição (customFieldRuleId)" />
+                <button id="btnAddCF" class="btnSalvar">Salvar</button>
             </div>
-            <table class="adminTable">
-              <thead>
-                <tr>
-                  <th>ID</th><th>ASSUNTO</th><th>STATUS</th><th>RESPONSÁVEL</th>
-                  <th>DATA CRIAÇÃO</th><th>DATA SOLUÇÃO</th><th>PREVISÃO DE SOLUÇÃO</th>
-                  <th>SERVIÇO</th><th>MÓDULO x ROTINA</th><th>AÇÃO</th>
-                </tr>
-              </thead>
-              <tbody>${rows}</tbody>
+            <table class="adminTable" id="cfTable">
+                <thead><tr><th>SERVIÇO</th><th>CUSTOMFIELDID</th><th>CUSTOMFIELDRULEID</th><th>AÇÃO</th></tr></thead>
+                <tbody></tbody>
             </table>
-          `;
-        } catch (e) {
-          out.innerHTML = `<p class="error">Erro: ${e.message}</p>`;
-        }
-      }
+        </section>
 
-      function groupByModule(tickets){
-        const map = {};
-        for (const t of tickets){
-          const key = (t.customFieldValue && String(t.customFieldValue).trim()) || "Sem preenchimento";
-          (map[key] ||= []).push(t);
-        }
-        // ordena por quantidade desc
-        return Object.fromEntries(Object.entries(map).sort((a,b)=>b[1].length - a[1].length));
-      }
+        <section id="customFieldsCausa" class="adminSection" style="display:none;">
+            <h2>⚙️ Custom Fields por Causa</h2>
+            <div class="adminForm">
+                <input type="text" id="cfCausa" placeholder="Causa (ex: Falha Elétrica)" />
+                <input type="number" id="cfIdCausa" placeholder="Campo (customFieldId)" />
+                <input type="number" id="cfRuleIdCausa" placeholder="Regra de Exibição (customFieldRuleId)" />
+                <button id="btnAddCFCausa" class="btnSalvar">Salvar</button>
+            </div>
+            <table class="adminTable" id="cfTableCausa">
+                <thead><tr><th>CAUSA</th><th>CUSTOMFIELDID</th><th>CUSTOMFIELDRULEID</th><th>AÇÃO</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </section>
+        
+        <section id="ticketClassificationsAdmin" class="adminSection" style="display:none;">
+            <h2>⚙️ Classificação de Ticket</h2>
+            <div class="adminForm">
+                <input type="text" id="tcClassification" placeholder="Classificação (ex: Dúvida)" />
+                <input type="number" id="tcId" placeholder="Campo (customFieldId)" />
+                <input type="number" id="tcRuleId" placeholder="Regra de Exibição (customFieldRuleId)" />
+                <button id="btnAddTC" class="btnSalvar">Salvar</button>
+            </div>
+            <table class="adminTable" id="tcTable">
+                <thead><tr><th>CLASSIFICAÇÃO</th><th>CUSTOMFIELDID</th><th>CUSTOMFIELDRULEID</th><th>AÇÃO</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </section>
+        
+    </div>
 
-      function renderModuleTable(byModule){
-        const rows = Object.entries(byModule).map(([k, arr]) => `
-          <tr>
-            <td>${k}</td>
-            <td style="text-align:right">${arr.length}</td>
-          </tr>
-        `).join("");
-        return `
-          <table class="adminTable" style="max-width:740px;margin:0 auto;">
-            <thead><tr><th>MÓDULO x ROTINA</th><th>QUANTIDADE</th></tr></thead>
-            <tbody>${rows}</tbody>
-          </table>
-        `;
-      }
+    <div class="appFooter">Desenvolvido para Viasoft © 2025</div>
 
-      // ---------- EXPORT (RESUMO por módulo) ----------
-      window.exportModulesXLSX = () => {
-        if (!lastData) return;
-        const byModule = groupByModule(lastData.tickets||[]);
-        const wsData = [["Módulo x Rotina","Quantidade"]];
-        for (const [k, v] of Object.entries(byModule)) wsData.push([k, v.length]);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(wsData), "Resumo");
-        XLSX.writeFile(wb, `resumo-modulo-rotina_${(lastData.serviceFirstLevel||"servico")}.xlsx`);
-      };
+    <script>
+        // Scripts de inicialização e chamadas de API (sem alterações)
+        (async function () {
+            try {
+                const r = await fetch("/api/custom-fields", { credentials: "include" });
+                if (!r.ok) return;
+                const data = await r.json();
+                const serviceOptions = document.getElementById("serviceOptions");
+                const services = [...new Set(data.map(item => item.service))];
+                serviceOptions.innerHTML = services.map(s => `<option value="${s}"></option>`).join('');
+            } catch (e) {
+                console.error('Erro ao carregar serviços', e);
+            }
+        })();
 
-      window.exportModulesPDF = () => {
-        if (!lastData) return;
-        const byModule = groupByModule(lastData.tickets||[]);
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF({ unit:"pt", format:"a4" });
-        doc.setFontSize(14);
-        doc.text(`Resumo — Módulo x Rotina (${lastData.serviceFirstLevel||lastData.service})`, 40, 40);
-        const body = Object.entries(byModule).map(([k,v]) => [k, v.length]);
-        doc.autoTable({ startY:60, head:[["Módulo x Rotina","Quantidade"]], body });
-        doc.save(`resumo-modulo-rotina_${(lastData.serviceFirstLevel||"servico")}.pdf`);
-      };
+        (async function () {
+            try {
+                const r = await fetch("/api/ticket-classifications", { credentials: "include" });
+                if (!r.ok) return;
+                const classifications = await r.json();
+                const classificationSelect = document.getElementById("classificationFilter");
+                classificationSelect.innerHTML += classifications.map(item => `<option value="${item.service}">${item.service}</option>`).join('');
+            } catch (e) {
+                console.error('Erro ao carregar classificações', e);
+            }
+        })();
 
-      window.exportModulesDOCX = async () => {
-        if (!lastData) return;
-        const byModule = groupByModule(lastData.tickets||[]);
-        const { Document, Packer, Paragraph, Table, TableRow, TableCell, WidthType, TextRun } = window.docx;
-        const rows = [
-          new TableRow({
-            children:[
-              new TableCell({ children:[new Paragraph("Módulo x Rotina")], width:{ size:70, type:WidthType.PERCENT } }),
-              new TableCell({ children:[new Paragraph("Quantidade")], width:{ size:30, type:WidthType.PERCENT } })
-            ]
-          }),
-          ...Object.entries(byModule).map(([k,v]) =>
-            new TableRow({
-              children:[
-                new TableCell({ children:[new Paragraph(String(k))] }),
-                new TableCell({ children:[new Paragraph(String(v.length))] })
-              ]
-            })
-          )
-        ];
-        const doc = new Document({
-          sections:[{
-            children:[
-              new Paragraph({ children:[ new TextRun({ text:`Resumo — Módulo x Rotina (${lastData.serviceFirstLevel||lastData.service})`, bold:true }) ] }),
-              new Table({ rows })
-            ]
-          }]
-        });
-        const blob = await Packer.toBlob(doc);
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = `resumo-modulo-rotina_${(lastData.serviceFirstLevel||"servico")}.docx`;
-        a.click();
-        URL.revokeObjectURL(a.href);
-      };
+        // Scripts de admin (sem alterações)
+        (async function () {
+            try {
+                const me = await fetch("/api/me", { credentials: "include" }).then(r => r.json());
+                if (me.role === "admin") {
+                    document.getElementById("customFieldsAdmin").style.display = "";
+                    loadCFs();
+                }
+            } catch {}
+            async function loadCFs() {
+                const tb = document.querySelector("#cfTable tbody");
+                tb.innerHTML = "<tr><td colspan=4>Carregando...</td></tr>";
+                const r = await fetch("/api/custom-fields", { credentials: "include" });
+                if (!r.ok) return;
+                const data = await r.json();
+                tb.innerHTML = data.map(cf => `
+                    <tr>
+                        <td>${cf.service}</td>
+                        <td>${cf.customFieldId}</td>
+                        <td>${cf.customFieldRuleId}</td>
+                        <td><button class="btnExcluir" onclick="deleteCF(${cf.id})">Excluir</button></td>
+                    </tr>`).join("");
+            }
+            document.getElementById("btnAddCF").onclick = async () => {
+                const service = document.getElementById("cfService").value.trim();
+                const cfId = document.getElementById("cfId").value;
+                const cfRuleId = document.getElementById("cfRuleId").value;
+                if (!service || !cfId || !cfRuleId) { alert("Preencha todos os campos."); return; }
+                await fetch("/api/custom-fields", {
+                    method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
+                    body: JSON.stringify({ service, customFieldId: cfId, customFieldRuleId: cfRuleId })
+                });
+                loadCFs();
+            };
+            window.deleteCF = async (id) => {
+                if (!confirm("Excluir este registro?")) return;
+                await fetch("/api/custom-fields/" + id, { method: "DELETE", credentials: "include" });
+                loadCFs();
+            };
+        })();
 
-      // ---------- EXPORT (DETALHE com IDs por módulo) ----------
-      window.exportIDsXLSX = () => {
-        if (!lastData) return;
-        const byModule = groupByModule(lastData.tickets||[]);
-        const wb = XLSX.utils.book_new();
-        // uma aba por grupo
-        for (const [k, arr] of Object.entries(byModule)) {
-          const aoa = [["Grupo","ID","Assunto","Status","Responsável","Criação","Solução"]];
-          arr.forEach(t => aoa.push([
-            k, t.id, t.subject||"", t.status||"", t.owner||"",
-            fmtDateTime(t.createdDate),
-            fmtDateTime(t.solvedDate || t.closedIn)
-          ]));
-          const ws = XLSX.utils.aoa_to_sheet(aoa);
-          XLSX.utils.book_append_sheet(wb, ws, k.substring(0,31) || "SemNome");
-        }
-        XLSX.writeFile(wb, `ids-por-modulo_${(lastData.serviceFirstLevel||"servico")}.xlsx`);
-      };
+        (async function () {
+            try {
+                const me = await fetch("/api/me", { credentials: "include" }).then(r => r.json());
+                if (me.role === "admin") {
+                    document.getElementById("customFieldsCausa").style.display = "";
+                    loadCFCausa();
+                }
+            } catch {}
+            async function loadCFCausa() {
+                const tb = document.querySelector("#cfTableCausa tbody");
+                tb.innerHTML = "<tr><td colspan=4>Carregando...</td></tr>";
+                const r = await fetch("/api/custom-fields-causa", { credentials: "include" });
+                if (!r.ok) return;
+                const data = await r.json();
+                tb.innerHTML = data.map(cf => `
+                    <tr>
+                        <td>${cf.service}</td>
+                        <td>${cf.customFieldId}</td>
+                        <td>${cf.customFieldRuleId}</td>
+                        <td><button class="btnExcluir" onclick="deleteCFCausa(${cf.id})">Excluir</button></td>
+                    </tr>`).join("");
+            }
+            document.getElementById("btnAddCFCausa").onclick = async () => {
+                const causa = document.getElementById("cfCausa").value.trim();
+                const cfId = document.getElementById("cfIdCausa").value;
+                const cfRuleId = document.getElementById("cfRuleIdCausa").value;
+                if (!causa || !cfId || !cfRuleId) { alert("Preencha todos os campos."); return; }
+                await fetch("/api/custom-fields-causa", {
+                    method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
+                    body: JSON.stringify({ service: causa, customFieldId: cfId, customFieldRuleId: cfRuleId })
+                });
+                loadCFCausa();
+            };
+            window.deleteCFCausa = async (id) => {
+                if (!confirm("Excluir este registro?")) return;
+                await fetch("/api/custom-fields-causa/" + id, { method: "DELETE", credentials: "include" });
+                loadCFCausa();
+            };
+        })();
+        
+        (async function () {
+            try {
+                const me = await fetch("/api/me", { credentials: "include" }).then(r => r.json());
+                if (me.role === "admin") {
+                    document.getElementById("ticketClassificationsAdmin").style.display = "";
+                    loadTCs();
+                }
+            } catch {}
+            async function loadTCs() {
+                const tb = document.querySelector("#tcTable tbody");
+                tb.innerHTML = "<tr><td colspan=4>Carregando...</td></tr>";
+                const r = await fetch("/api/ticket-classifications", { credentials: "include" });
+                if (!r.ok) return;
+                const data = await r.json();
+                tb.innerHTML = data.map(tc => `
+                    <tr>
+                        <td>${tc.service}</td>
+                        <td>${tc.customFieldId}</td>
+                        <td>${tc.customFieldRuleId}</td>
+                        <td><button class="btnExcluir" onclick="deleteTC(${tc.id})">Excluir</button></td>
+                    </tr>`).join("");
+            }
+            document.getElementById("btnAddTC").onclick = async () => {
+                const classification = document.getElementById("tcClassification").value.trim();
+                const cfId = document.getElementById("tcId").value;
+                const cfRuleId = document.getElementById("tcRuleId").value;
+                if (!classification || !cfId || !cfRuleId) { alert("Preencha todos os campos."); return; }
+                await fetch("/api/ticket-classifications", {
+                    method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
+                    body: JSON.stringify({ classification, customFieldId: cfId, customFieldRuleId: cfRuleId })
+                });
+                loadTCs();
+            };
+            window.deleteTC = async (id) => {
+                if (!confirm("Excluir este registro?")) return;
+                await fetch("/api/ticket-classifications/" + id, { method: "DELETE", credentials: "include" });
+                loadTCs();
+            };
+        })();
 
-      window.exportIDsPDF = () => {
-        if (!lastData) return;
-        const byModule = groupByModule(lastData.tickets||[]);
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF({ unit:"pt", format:"a4" });
-        doc.setFontSize(14);
-        let first = true;
-        for (const [k, arr] of Object.entries(byModule)) {
-          if (!first) doc.addPage();
-          first = false;
-          doc.text(`IDs — ${k}`, 40, 40);
-          const body = arr.map(t => [t.id, t.subject||"", t.status||"", t.owner||"", fmtDateTime(t.createdDate), fmtDateTime(t.solvedDate||t.closedIn)]);
-          doc.autoTable({
-            startY:60,
-            head:[["ID","Assunto","Status","Responsável","Criação","Solução"]],
-            body,
-            styles:{ fontSize:8, cellPadding:3 }
-          });
-        }
-        doc.save(`ids-por-modulo_${(lastData.serviceFirstLevel||"servico")}.pdf`);
-      };
+        // Script principal da busca (sem alterações)
+        (function () {
+            const customFieldSelect = document.getElementById('customFieldSourceSelect');
+            const choices = new Choices(customFieldSelect, {
+                removeItemButton: true,
+                placeholder: true,
+                placeholderValue: 'Selecione colunas...',
+                noChoicesText: 'Não há mais opções'
+            });
 
-      window.exportIDsDOCX = async () => {
-        if (!lastData) return;
-        const byModule = groupByModule(lastData.tickets||[]);
-        const { Document, Packer, Paragraph, Table, TableRow, TableCell, WidthType, TextRun } = window.docx;
+            const btn = document.getElementById('btnSearchService');
+            const resultsDiv = document.getElementById('serviceSearchResults');
+            const serviceInput = document.getElementById('serviceSearchInput');
+            const dateStartInput = document.getElementById('serviceDateStart');
+            const dateEndInput = document.getElementById('serviceDateEnd');
+            const statusInput = document.getElementById('statusFilter');
+            const teamInput = document.getElementById('teamFilter');
+            const classificationInput = document.getElementById('classificationFilter');
+            
+            let aggregatedTickets = [];
+            let causeBarChart = null;
+            let causeDonutChart = null;
+            let isLoading = false;
 
-        const sections = [];
-        for (const [k, arr] of Object.entries(byModule)) {
-          const rows = [
-            new TableRow({
-              children:[
-                "ID","Assunto","Status","Responsável","Criação","Solução"
-              ].map(h => new TableCell({ children:[new Paragraph(String(h))] }))
-            }),
-            ...arr.map(t => new TableRow({
-              children:[
-                t.id, t.subject||"", t.status||"", t.owner||"", fmtDateTime(t.createdDate), fmtDateTime(t.solvedDate||t.closedIn)
-              ].map(v => new TableCell({ children:[new Paragraph(String(v))] }))
-            }))
-          ];
-          sections.push(
-            new Paragraph({ children:[ new TextRun({ text:`IDs — ${k}`, bold:true }) ] }),
-            new Table({ rows })
-          );
-        }
+            btn.onclick = async () => {
+                if (isLoading) return;
+                const service = serviceInput.value.trim();
+                if (!service) {
+                    alert('Por favor, selecione um servico.');
+                    return;
+                }
 
-        const doc = new Document({ sections:[{ children: sections }] });
-        const blob = await Packer.toBlob(doc);
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = `ids-por-modulo_${(lastData.serviceFirstLevel||"servico")}.docx`;
-        a.click();
-        URL.revokeObjectURL(a.href);
-      };
+                const selectedCustomFields = choices.getValue(true);
+                const params = new URLSearchParams();
+                params.append('service', service);
+                if (dateStartInput.value) params.append('start', dateStartInput.value);
+                if (dateEndInput.value) params.append('end', dateEndInput.value);
+                if (statusInput.value) params.append('status', statusInput.value);
+                if (teamInput.value) params.append('team', teamInput.value);
+                if (classificationInput.value) params.append('classification', classificationInput.value);
+                
+                selectedCustomFields.forEach(field => {
+                    params.append('customFieldSource', field);
+                });
 
-      // Detalhe rápido
-      window.verTicket = async function (ticketId) {
-        try {
-          const r = await fetch(`/api/ticket/${ticketId}`, { credentials: "include" });
-          if (!r.ok) throw new Error("HTTP " + r.status);
-          const t = await r.json();
-          alert(
-            `🔎 Ticket #${t.id}\n\n` +
-            `Assunto: ${t.subject}\n` +
-            `Status: ${t.status}\n` +
-            `Responsável: ${t.owner}\n` +
-            `Equipe: ${t.ownerTeam}\n` +
-            `Solicitante: ${t.requester}\n` +
-            `Criado em: ${new Date(t.createdDate).toLocaleString("pt-BR")}`
-          );
-        } catch (e) { alert("Erro ao buscar detalhes: " + e.message); }
-      }
-    })();
+                await loadAllTickets(params);
+            };
 
-    // ===== Admin CustomFields =====
-    (async function () {
-      try {
-        const me = await fetch("/api/me", { credentials: "include" }).then(r => r.json());
-        if (me.role === "admin") {
-          document.getElementById("customFieldsAdmin").style.display = "";
-          loadCFs();
-        }
-      } catch {}
+            async function loadAllTickets(baseParams) {
+                isLoading = true;
+                aggregatedTickets = [];
+                btn.disabled = true;
+                btn.textContent = 'Carregando...';
+                resultsDiv.innerHTML = `<p>Buscando todos os tickets, isso pode levar um momento...</p>`;
+                try {
+                    const response = await fetch(`/api/service-tickets?${baseParams.toString()}`, { credentials: 'include' });
+                    if (!response.ok) {
+                        const err = await response.json().catch(() => ({}));
+                        throw new Error(err.error || 'Erro na API');
+                    }
+                    const payload = await response.json();
+                    aggregatedTickets = Array.isArray(payload.tickets) ? payload.tickets : [];
+                } catch (e) {
+                    resultsDiv.innerHTML = `<p class="error">Erro ao pesquisar: ${e.message}</p>`;
+                } finally {
+                    isLoading = false;
+                    btn.disabled = false;
+                    btn.textContent = 'Pesquisar';
+                    renderFinalResults();
+                }
+            }
 
-      async function loadCFs() {
-        const tb = document.querySelector("#cfTable tbody");
-        tb.innerHTML = "<tr><td colspan=4>Carregando...</td></tr>";
-        const r = await fetch("/api/custom-fields", { credentials: "include" });
-        if (!r.ok) return;
-        const data = await r.json();
-        tb.innerHTML = data.map(cf => `
-          <tr>
-            <td>${cf.service}</td>
-            <td>${cf.customFieldId}</td>
-            <td>${cf.customFieldRuleId}</td>
-            <td><button class="btnExcluir" onclick="deleteCF(${cf.id})">Excluir</button></td>
-          </tr>
-        `).join("");
-      }
 
-      document.getElementById("btnAddCF").onclick = async () => {
-        const service = document.getElementById("cfService").value.trim();
-        const cfId = document.getElementById("cfId").value;
-        const cfRuleId = document.getElementById("cfRuleId").value;
-        if (!service || !cfId || !cfRuleId) { alert("Preencha todos os campos."); return; }
-        await fetch("/api/custom-fields", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ service, customFieldId: cfId, customFieldRuleId: cfRuleId })
-        });
-        loadCFs();
-      };
+            function renderFinalResults() {
+                if (aggregatedTickets.length === 0) {
+                    if (causeBarChart) { causeBarChart.destroy(); causeBarChart = null; }
+                    if (causeDonutChart) { causeDonutChart.destroy(); causeDonutChart = null; }
+                    resultsDiv.innerHTML = '<p>Nenhum ticket encontrado para esta pesquisa.</p>';
+                    return;
+                }
 
-      window.deleteCF = async (id) => {
-        if (!confirm("Excluir este registro?")) return;
-        await fetch("/api/custom-fields/" + id, { method: "DELETE", credentials: "include" });
-        loadCFs();
-      };
-    })();
-  </script>
+                const causePalette = ['#ef4444', '#f59e0b', '#facc15', '#22c55e', '#0ea5e9', '#6366f1', '#a855f7', '#14b8a6', '#f472b6', '#94a3b8'];
+
+                const causeCounts = aggregatedTickets.reduce((acc, ticket) => {
+                    const value = (ticket.extractedValues && ticket.extractedValues.causa) || ticket.ticketClassification || '';
+                    const trimmed = (value || '').toString().trim();
+                    if (!trimmed) return acc;
+                    acc[trimmed] = (acc[trimmed] || 0) + 1;
+                    return acc;
+                }, {});
+
+                const moduleCounts = aggregatedTickets.reduce((acc, ticket) => {
+                    const value = (ticket.extractedValues && ticket.extractedValues.servico) || ticket.service || ticket.serviceFirstLevel || '';
+                    const trimmed = (value || '').toString().trim();
+                    if (!trimmed) return acc;
+                    acc[trimmed] = (acc[trimmed] || 0) + 1;
+                    return acc;
+                }, {});
+
+                const sortedCauses = Object.entries(causeCounts).sort((a, b) => b[1] - a[1]);
+                const topCauseEntries = sortedCauses.slice(0, 10);
+                const othersCount = sortedCauses.slice(10).reduce((sum, [, count]) => sum + count, 0);
+                const donutEntries = othersCount > 0 ? [...topCauseEntries, ['Outros', othersCount]] : topCauseEntries;
+
+                const barLabels = topCauseEntries.map(([label]) => label);
+                const barValues = topCauseEntries.map(([, count]) => count);
+                const donutLabels = donutEntries.map(([label]) => label);
+                const donutValues = donutEntries.map(([, count]) => count);
+                const donutColors = donutEntries.map((_, index) => causePalette[index % causePalette.length]);
+                const totalCauseTickets = donutValues.reduce((sum, value) => sum + value, 0);
+
+                const primaryCause = topCauseEntries.length ? topCauseEntries[0][0] : 'N/A';
+                const sortedModules = Object.entries(moduleCounts).sort((a, b) => b[1] - a[1]);
+                const primaryModule = sortedModules.length ? sortedModules[0][0] : 'N/A';
+                const totalTickets = aggregatedTickets.length;
+
+                const formatDate = (iso) => {
+                    if (!iso) return '';
+                    return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                };
+
+                const selectedFields = choices.getValue(true);
+                const fieldTitles = {
+                    servico: 'MODULO-ROTINA',
+                    causa: 'CAUSA'
+                };
+                const staticHeaders = ['ID', 'Assunto', 'Status', 'Responsavel', 'Equipe', 'Criacao', 'Solucao'];
+                const dynamicHeaders = selectedFields.map(key => fieldTitles[key] || key.toUpperCase());
+                const finalHeaders = [...staticHeaders, ...dynamicHeaders, 'Classificacao'];
+
+                const dataRows = aggregatedTickets.map(ticket => {
+                    const staticData = [
+                        ticket.id,
+                        ticket.subject || '',
+                        ticket.status || 'N/A',
+                        ticket.owner || 'N/A',
+                        ticket.ownerTeam || 'N/A',
+                        formatDate(ticket.createdDate),
+                        formatDate(ticket.solvedDate)
+                    ];
+                    const dynamicData = selectedFields.map(key => ticket.extractedValues ? (ticket.extractedValues[key] || '') : '');
+                    return [...staticData, ...dynamicData, ticket.ticketClassification || ''];
+                });
+
+                const axisColor = document.body.classList.contains('dark') ? '#e2e8f0' : '#0f172a';
+                const gridColor = document.body.classList.contains('dark') ? 'rgba(148, 163, 184, 0.28)' : 'rgba(148, 163, 184, 0.18)';
+                const donutBase = {
+                    labels: donutLabels.slice(),
+                    values: donutValues.slice(),
+                    colors: donutColors.slice()
+                };
+
+
+                const metricCardsHTML = `
+                    <div class="metricRow">
+                        <div class="metricCard">
+                            <span class="metricLabel">Total de Tickets</span>
+                            <span class="metricValue">${totalTickets}</span>
+                        </div>
+                        <div class="metricCard">
+                            <span class="metricLabel">Principal Modulo</span>
+                            <span class="metricValue">${primaryModule || 'N/A'}</span>
+                        </div>
+                        <div class="metricCard">
+                            <span class="metricLabel">Principal Causa</span>
+                            <span class="metricValue">${primaryCause || 'N/A'}</span>
+                        </div>
+                    </div>
+                `;
+
+                const exportButtonsHTML = `
+                    <div class="exportBar">
+                        <strong>Exportar como:</strong>
+                        <button id="exportExcelBtn" class="btnGhost sm">Excel (.xlsx)</button>
+                        <button id="exportPdfBtn" class="btnGhost sm">PDF (.pdf)</button>
+                        <button id="exportDocxBtn" class="btnGhost sm">Word (.docx)</button>
+                    </div>
+                `;
+
+                const tableHTML = `
+                    <div class="tableWrapper">
+                        <div class="tableScroll">
+                            <table class="adminTable">
+                                <thead>
+                                    <tr>
+                                        ${finalHeaders.map(h => `<th>${h}</th>`).join('')}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${dataRows.map(row => `
+                                        <tr>
+                                            ${row.map((cell, index) => {
+                                                if (index === 0) return `<td><a href="https://viasoft.movidesk.com/Ticket/Edit/${cell}" target="_blank">${cell}</a></td>`;
+                                                return `<td>${cell || 'N/A'}</td>`
+                                            }).join('')}
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+
+                let chartsSectionHTML = '';
+
+                if (topCauseEntries.length) {
+                    const legendItemsHTML = donutEntries.map(([label, count], index) => {
+                        const percentage = totalCauseTickets ? ((count / totalCauseTickets) * 100).toFixed(1) : 0;
+                        const color = donutColors[index];
+                        return `
+                            <div class="legendItem" data-index="${index}">
+                                <span class="legendLeft">
+                                    <span class="legendColor" style="background:${color};"></span>
+                                    <span class="legendName">${label}</span>
+                                </span>
+                                <span class="legendRight">${count} (${percentage}%)</span>
+                            </div>
+                        `;
+                    }).join('');
+
+                    const causeLegendHTML = `<div class="chartLegend">${legendItemsHTML}</div>`;
+
+                    chartsSectionHTML = `
+                        <div class="chartsRow">
+                          <div class="chartCard chartCard--bar">
+                            <h3>Top 10 - Causa</h3>
+                            <div class="chartBody chartBody--bar">
+                              <canvas id="causeBarChart"></canvas>
+                            </div>
+                          </div>
+                          <div class="chartCard chartCard--donut">
+                            <h3>Distribuicao por Causa</h3>
+                            <div class="chartBody chartBody--donut">
+                              <canvas id="causeDonutChart"></canvas>
+                              ${causeLegendHTML}
+                            </div>
+                          </div>
+                        </div>
+                    `;
+                } else {
+                    chartsSectionHTML = `
+                        <div class="chartsRow">
+                          <div class="chartCard">
+                            <h3>Visualizacoes</h3>
+                            <div class="chartBody">
+                              <p>Sem dados de causa para exibir.</p>
+                            </div>
+                          </div>
+                        </div>
+                    `;
+                }
+
+
+                const layoutHTML = `
+                    <div class="resultsContent">
+                        ${chartsSectionHTML}
+                        ${tableHTML}
+                    </div>
+                `;
+
+                resultsDiv.innerHTML = metricCardsHTML + exportButtonsHTML + layoutHTML;
+
+                if (causeBarChart) { causeBarChart.destroy(); causeBarChart = null; }
+                if (causeDonutChart) { causeDonutChart.destroy(); causeDonutChart = null; }
+
+                if (topCauseEntries.length) {
+                    const barCtx = document.getElementById('causeBarChart')?.getContext('2d');
+                    if (barCtx) {
+                        causeBarChart = new Chart(barCtx, {
+                            type: 'bar',
+                            data: {
+                                labels: barLabels,
+                                datasets: [{
+                                    data: barValues,
+                                    backgroundColor: barValues.map(() => '#60a5fa'),
+                                    hoverBackgroundColor: barValues.map(() => '#3b82f6'),
+                                    borderRadius: 12,
+                                    borderSkipped: false,
+                                    barThickness: 20,
+                                    maxBarThickness: 32
+                                }]
+                            },
+                            options: {
+                                indexAxis: 'y',
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                layout: { padding: { top: 12, right: 18, bottom: 12, left: 4 } },
+                                animation: { duration: 500 },
+                                plugins: {
+                                    legend: { display: false },
+                                    tooltip: {
+                                        callbacks: {
+                                            title: ctx => ctx[0].label,
+                                            label: ctx => `${ctx.formattedValue} tickets`
+                                        }
+                                    }
+                                },
+                                scales: {
+                                    x: {
+                                        beginAtZero: true,
+                                        ticks: { precision: 0, color: axisColor, font: { size: 12, weight: '500' } },
+                                        grid: { color: gridColor, borderDash: [4, 4] }
+                                    },
+                                    y: {
+                                        ticks: { color: axisColor, font: { size: 13, weight: '600' } },
+                                        grid: { display: false }
+                                    }
+                                }
+                            }
+                        });
+                    }
+
+                    const donutCtx = document.getElementById('causeDonutChart')?.getContext('2d');
+                    if (donutCtx) {
+                        causeDonutChart = new Chart(donutCtx, {
+                            type: 'doughnut',
+                            data: {
+                                labels: donutLabels,
+                                datasets: [{
+                                    data: donutValues,
+                                    backgroundColor: donutColors,
+                                    hoverBackgroundColor: donutColors,
+                                    borderWidth: 0,
+                                    hoverOffset: 12
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                cutout: '55%',
+                                animation: { duration: 400 },
+                                plugins: {
+                                    legend: { display: false },
+                                    tooltip: {
+                                        callbacks: {
+                                            label: ctx => {
+                                                const total = ctx.dataset.data.reduce((sum, value) => sum + Number(value || 0), 0) || 1;
+                                                const percentage = ((ctx.parsed / total) * 100).toFixed(1);
+                                                return `${ctx.label}: ${ctx.formattedValue} (${percentage}%)`;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        });
+
+                        const legendItems = Array.from(resultsDiv.querySelectorAll('.chartCard--donut .chartLegend .legendItem'));
+                        let activeLegendIndex = null;
+
+                        const applyDonutFilter = (targetIndex) => {
+                            legendItems.forEach(item => {
+                                item.classList.remove('active');
+                                item.setAttribute('aria-pressed', 'false');
+                            });
+                            if (targetIndex === null) {
+                                causeDonutChart.data.labels = donutBase.labels.slice();
+                                causeDonutChart.data.datasets[0].data = donutBase.values.slice();
+                                causeDonutChart.data.datasets[0].backgroundColor = donutBase.colors.slice();
+                            } else {
+                                const label = donutBase.labels[targetIndex];
+                                const value = donutBase.values[targetIndex];
+                                const color = donutBase.colors[targetIndex];
+                                legendItems[targetIndex].classList.add('active');
+                                legendItems[targetIndex].setAttribute('aria-pressed', 'true');
+                                causeDonutChart.data.labels = [label];
+                                causeDonutChart.data.datasets[0].data = [value];
+                                causeDonutChart.data.datasets[0].backgroundColor = [color];
+                            }
+                            causeDonutChart.update();
+                        };
+
+                        legendItems.forEach((item, index) => {
+                            item.setAttribute('role', 'button');
+                            item.setAttribute('tabindex', '0');
+                            item.setAttribute('aria-pressed', 'false');
+                            item.addEventListener('click', () => {
+                                activeLegendIndex = activeLegendIndex === index ? null : index;
+                                applyDonutFilter(activeLegendIndex);
+                            });
+                            item.addEventListener('keydown', (event) => {
+                                if (event.key === 'Enter' || event.key === ' ') {
+                                    event.preventDefault();
+                                    activeLegendIndex = activeLegendIndex === index ? null : index;
+                                    applyDonutFilter(activeLegendIndex);
+                                }
+                            });
+                        });
+                    }
+                }
+
+                const fileName = `relatorio-${new Date().toISOString().slice(0, 10)}`;
+
+                function exportToExcel() {
+                    const sheetData = [finalHeaders, ...dataRows];
+                    const ws = XLSX.utils.aoa_to_sheet(sheetData);
+                    const wb = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(wb, ws, "Relatorio");
+                    XLSX.writeFile(wb, `${fileName}.xlsx`);
+                }
+
+                function exportToPdf() {
+                    const { jsPDF } = window.jspdf;
+                    const doc = new jsPDF({ orientation: "landscape" });
+                    doc.autoTable({
+                        head: [finalHeaders],
+                        body: dataRows,
+                        styles: { fontSize: 8 },
+                        headStyles: { fillColor: [34, 197, 94] }
+                    });
+                    doc.save(`${fileName}.pdf`);
+                }
+
+                async function exportToDocx() {
+                    const tableRows = [
+                        new docx.TableRow({
+                            children: finalHeaders.map(header => new docx.TableCell({
+                                children: [new docx.Paragraph({ text: header, bold: true })],
+                            })),
+                        })
+                    ];
+
+                    dataRows.forEach(row => {
+                        tableRows.push(new docx.TableRow({
+                            children: row.map(cell => new docx.TableCell({
+                                children: [new docx.Paragraph(String(cell || ''))],
+                            })),
+                        }));
+                    });
+
+                    const table = new docx.Table({ rows: tableRows, width: { size: 100, type: docx.WidthType.PERCENTAGE } });
+                    const doc = new docx.Document({
+                        sections: [{ children: [table] }]
+                    });
+
+                    const blob = await docx.Packer.toBlob(doc);
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `${fileName}.docx`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }
+
+                document.getElementById('exportExcelBtn').onclick = exportToExcel;
+                document.getElementById('exportPdfBtn').onclick = exportToPdf;
+                document.getElementById('exportDocxBtn').onclick = exportToDocx;
+            }
+        })();
+    </script>
 </body>
 </html>
